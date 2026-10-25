@@ -1,0 +1,50 @@
+name: Package and example
+
+on:
+  push:
+    branches: [dev, main]
+    tags: ['*']
+  pull_request:
+    branches: [dev, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Xcode ${{ matrix.xcode }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            xcode: '16.4'
+          - runner: macos-26
+            xcode: '26.6'
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Select Xcode
+        run: sudo xcode-select --switch /Applications/Xcode_${{ matrix.xcode }}.app
+      - name: Test package, example, and documentation
+        run: python3 tools/validate.py
+      - name: Preserve test evidence
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: tests-xcode-${{ matrix.xcode }}
+          path: |
+            .artifacts/validation-*/*.log
+            .artifacts/validation-*/*.json
+            .artifacts/validation-*/*.xcresult
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 7
