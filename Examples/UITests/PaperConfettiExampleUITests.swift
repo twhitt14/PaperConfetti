@@ -36,7 +36,9 @@ final class PaperConfettiExampleUITests: XCTestCase {
         let reducedMotion = app.switches["reduce-motion"]
         XCTAssertTrue(reducedMotion.waitForExistence(timeout: 3))
         scrollIntoView(reducedMotion, in: app)
-        app.switches["reduce-motion"].tap()
+        reducedMotion.tap()
+        XCTAssertEqual(reducedMotion.value as? String, "1")
+        XCTAssertTrue(app.staticTexts["reduced-motion-message"].exists)
         app.buttons["pop"].tap()
         scrollIntoView(app.buttons["tap-through"], in: app)
         app.buttons["tap-through"].tap()
@@ -53,11 +55,14 @@ final class PaperConfettiExampleUITests: XCTestCase {
                 XCTAssertTrue(element.isHittable)
                 return
             }
-            let movingDown = element.exists && element.frame.minY < top
-            let start = scroll.coordinate(
-                withNormalizedOffset: CGVector(dx: 0.5, dy: movingDown ? 0.45 : 0.65))
-            let end = scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: movingDown ? 0.65 : 0.45))
-            start.press(forDuration: 0.05, thenDragTo: end)
+            let delta = element.exists ? element.frame.midY - (top + bottom) / 2 : 120
+            let distance = min(120, max(-120, delta))
+            // The content has a 24-point gutter. Drag there so sliders and switches
+            // cannot capture the gesture. Holding at the end avoids momentum overshoot.
+            let start = scroll.coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0.55))
+                .withOffset(CGVector(dx: 12, dy: 0))
+            let end = start.withOffset(CGVector(dx: 0, dy: -distance))
+            start.press(forDuration: 0.05, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0.15)
         }
         XCTFail("Could not scroll \(element.identifier) into the unobscured viewport")
     }

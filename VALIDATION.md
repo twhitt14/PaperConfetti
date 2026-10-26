@@ -58,6 +58,12 @@ repeated seeded pops. These are behavioral checks, not FPS measurements.
 The example UI tests use short, bounded scroll gestures to bring controls below
 the navigation bar before tapping. A full swipe previously scrolled an expandable
 control behind the translucent bar; the test now checks the visible viewport.
+A subsequent CI repeat also caught a center-screen scroll drag being consumed
+by a slider. Gestures now use the empty 24-point content gutter and stop without
+momentum; the Reduce Motion test explicitly verifies the switch is enabled.
+Both UI tests passed three consecutive local repetitions after this correction
+(six executions, no failures), recorded in
+`.artifacts/release-0.1.0/RepeatedUITests.xcresult`.
 
 Local evidence is intentionally ignored:
 
