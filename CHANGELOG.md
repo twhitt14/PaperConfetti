@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — proposed 0.1.0
+## 0.1.0 — 2026-10-26
 
 - Method-based SwiftUI integration: `ConfettiController`, `pop()`, `cancel()` and
   `.confettiOverlay(...)`; no event counter needed.

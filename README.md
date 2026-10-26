@@ -4,9 +4,9 @@ A dependency-free iOS 16+ confetti package for SwiftUI and UIKit. Thirteen paper
 shapes, lifelike tumble, and a simple `pop()` method. Core Animation handles the
 flight while your interface keeps responding.
 
-**Release status:** local package, example, Release builds and DocC have passed
-validation. A public remote and first version tag have not been created yet. See
-[PUBLISHING.md](PUBLISHING.md) before the first release.
+**Version 0.1.0** is the first release. The repository is currently private;
+installation requires GitHub access to `twhitt14/PaperConfetti`. See
+[validation results](VALIDATION.md) and the [release workflow](PUBLISHING.md).
 
 <img src="Documentation/showcase.png" width="320" alt="PaperConfetti example with a colorful burst over tappable controls">
 
@@ -18,15 +18,15 @@ run on an iPhone or iPad simulator. No signing account, setup tool or sibling
 checkout is needed for Simulator. To run on a physical device, select your own
 signing team in the example target.
 
-Once published, add the repository's Git URL through Xcode → Add Package
-Dependencies and select the **PaperConfetti** product. SwiftPM consumers can use:
+In Xcode → Add Package Dependencies, enter
+`https://github.com/twhitt14/PaperConfetti.git` and select the **PaperConfetti**
+product. SwiftPM consumers can use:
 
 ```swift
-// Replace the placeholder with the actual published repository URL.
-.package(url: "<published-repository-url>", from: "0.1.0")
+.package(url: "https://github.com/twhitt14/PaperConfetti.git", from: "0.1.0")
 ```
 
-Then add `.product(name: "PaperConfetti", package: "paper-confetti")` to your
+Then add `.product(name: "PaperConfetti", package: "paperconfetti")` to your
 target dependencies and `import PaperConfetti`. Use a tagged release for shipping
 apps; no registry or App Store upload is required for a Git-hosted Swift package.
 
@@ -159,8 +159,10 @@ python3 tools/capture-example.py    # Repeatable screenshots after validation
 The runner creates/reuses only the dedicated **PaperConfetti Example** simulator.
 Artifacts stay in ignored `.artifacts/`; no personal simulator is erased or used.
 The same runner is used by GitHub Actions on both configured Xcode generations.
-CI needs no secrets, signing certificates or external services. Remote CI results
-are available only after this repository is pushed to its hosted remote.
+CI uses the standard read-only GitHub Actions token for checkout; it needs no
+custom secrets, signing certificates or app services. Follow the
+[GitHub Actions runs](https://github.com/twhitt14/PaperConfetti/actions/workflows/ci.yml)
+for hosted results.
 
 Open the package's DocC catalog in Xcode for API documentation and the UIKit guide.
 See [CONTRIBUTING.md](CONTRIBUTING.md), [VALIDATION.md](VALIDATION.md), and the
