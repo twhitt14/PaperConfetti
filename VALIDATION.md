@@ -1,4 +1,36 @@
-# Standalone validation
+# Validation and release review
+
+## Hosted release preflight — October 26, 2026
+
+[GitHub Actions run 40281541365](https://github.com/twhitt14/PaperConfetti/actions/runs/40281541365)
+passed on the release source at `93f6ec0227cb4d8ec5d90e010e5fee9860ffb285`:
+
+| Toolchain | macOS tests | iOS package tests | Example UI tests | Release builds / DocC |
+| --- | --- | --- | --- | --- |
+| Xcode 16.4 (16F6), Swift 6.1.2 | 8 passed | 14 passed | 2 passed | Passed |
+| Xcode 26.6 (17F113), Swift 6.3.3 | 8 passed | 14 passed | 2 passed | Passed |
+
+A fresh consumer also resolved the private GitHub `dev` branch, built the product
+using identity `paperconfetti`, and imported `PaperConfetti` successfully. The
+release workflow separately requires successful main/tag CI and an exact-version
+consumer before publishing release notes. See the
+[0.1.0 release](https://github.com/twhitt14/PaperConfetti/releases/tag/0.1.0)
+for the final tag and CI evidence.
+
+The release review covered all tracked source, the example, tooling, workflow,
+licenses, and reachable Git history. No credentials, private service configuration,
+signing material, personal Xcode state or generated build output were found.
+The runtime has no network calls, analytics, persistence or third-party package
+dependencies. Original vector silhouettes and the example screenshot are included;
+no external reference artwork is redistributed. The original ConfettiSwiftUI MIT
+notice is retained verbatim at the root and in the package resource bundle.
+
+CI actions are pinned, checkout does not persist credentials, token permissions
+are read-only, and logs/results are retained for seven days. CI cannot publish a
+release. Repository visibility remains private; this release does not authorize
+a visibility change.
+
+## Local extraction validation — October 25, 2026
 
 Validated October 25, 2026 on Apple silicon with Xcode 27.2 (27B48),
 Swift 6.4.2, and the dedicated **PaperConfetti Example** iOS 27.2 simulator.
@@ -41,9 +73,8 @@ Local evidence is intentionally ignored:
 The newest SDK warns that the example has no App Intents metadata to extract,
 and its XCTest libraries have a newer deployment minimum than the app's iOS 16
 setting. The app/package build and the installed-runtime tests succeed. Hosted
-CI remains configured for Xcode 16.4 and 26.6; neither hosted job has run yet
-because this local repository has no remote.
+results for Xcode 16.4 and 26.6 are recorded above.
 
-Physical 60 Hz/120 Hz profiling and a minimum-iOS runtime run remain pre-release
-checks in [PUBLISHING.md](PUBLISHING.md). The renderer targets iOS 16+, but simulator
+Physical 60 Hz/120 Hz profiling and a minimum-iOS runtime run remain follow-up
+checks described in [PUBLISHING.md](PUBLISHING.md). The renderer targets iOS 16+, but simulator
 tests do not establish device GPU/FPS, energy, or every supported OS behavior.
