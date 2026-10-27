@@ -183,3 +183,7 @@ playback. Avoid placing the overlay inside moving layout containers and keep
 particle counts appropriate for your screen. The 2,000-particle safety cap is not
 a performance recommendation. Simulator timing is not device GPU/FPS or energy
 evidence; profile representative physical devices before adopting larger effects.
+
+## Profile on your iPhone
+
+Connect and unlock your iPhone, then run `python3 tools/profile.py`. The automated Release suite records animation hitches, CPU and memory, compares the historical ConfettiSwiftUI renderer, and tests touches through live confetti. See [physical-device setup and result interpretation](Documentation/PROFILING.md). The comparison dependency belongs only to the benchmark app; the library stays dependency-free.

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- One-command physical iPhone profiling suite with separate animation, CPU and memory recordings, a pinned historical ConfettiSwiftUI comparison, interaction checks, local reports and a simulator CI smoke test.
+
 ## 0.1.0 — 2026-10-26
 
 - Method-based SwiftUI integration: `ConfettiController`, `pop()`, `cancel()` and

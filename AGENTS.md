@@ -8,3 +8,5 @@
 - Run `swift test` and `python3 tools/validate.py` for relevant package/renderer changes. Use the dedicated PaperConfetti Example simulator; never erase or use a personal simulator. Inspect screenshots for visual changes.
 - CI validates macOS physics and iOS package/example tests. Keep token permissions read-only, pin Actions, preserve the MIT license and original ConfettiSwiftUI notice. No runtime dependencies or analytics.
 - Generated builds, logs, xcresults and captures belong under ignored `.artifacts/`. Commit intended source/doc/test files; preserve unrelated owner work.
+
+- Physical profiling: use `python3 tools/profile.py` and `Documentation/PROFILING.md`. Keep the pinned ConfettiSwiftUI dependency benchmark-only. Never report simulator callback timings as device frame delivery; preserve incomplete results and distinguish instrument passes. The dedicated simulator smoke command and Python runner tests are suitable for CI.

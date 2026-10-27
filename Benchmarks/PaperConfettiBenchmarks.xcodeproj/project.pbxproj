@@ -1,0 +1,360 @@
+// !$*UTF8*$!
+{
+	"classes" = {
+	};
+	"objectVersion" = "56";
+	"archiveVersion" = "1";
+	"objects" = {
+		"E6FC57C251E9E1BEC1D3C0D2" = {
+			"path" = "PaperConfettiBenchmarks.app";
+			"isa" = "PBXFileReference";
+			"explicitFileType" = "wrapper.application";
+			"sourceTree" = "BUILT_PRODUCTS_DIR";
+		};
+		"9D062BAFFF17BA8B9A1215C4" = {
+			"isa" = "XCSwiftPackageProductDependency";
+			"package" = "582681C2EAE02B3F3D399C0C";
+			"productName" = "PaperConfetti";
+		};
+		"12A78AD7BB4C0410A4A933CB" = {
+			"isa" = "PBXResourcesBuildPhase";
+			"buildActionMask" = "2147483647";
+			"files" = ();
+			"runOnlyForDeploymentPostprocessing" = "0";
+		};
+		"582681C2EAE02B3F3D399C0C" = {
+			"isa" = "XCLocalSwiftPackageReference";
+			"relativePath" = "..";
+		};
+		"7CB9C5DBBDFFE89694C24C30" = {
+			"isa" = "PBXSourcesBuildPhase";
+			"buildActionMask" = "2147483647";
+			"files" = ("8F69D2603037B23E80BB9FA3", "AC0000000000000000000004");
+			"runOnlyForDeploymentPostprocessing" = "0";
+		};
+		"160A76D81E8CCDDAB058444F" = {
+			"isa" = "PBXFrameworksBuildPhase";
+			"buildActionMask" = "2147483647";
+			"files" = ();
+			"runOnlyForDeploymentPostprocessing" = "0";
+		};
+		"F37922C48DA5978D02C9E50E" = {
+			"isa" = "XCConfigurationList";
+			"defaultConfigurationIsVisible" = "0";
+			"defaultConfigurationName" = "Release";
+			"buildConfigurations" = ("E9B2E96ABC5F6856F2BE79CF", "5A8C91857F674E16E2724F47");
+		};
+		"7D1043473D55BFA90E8530D3" = {
+			"buildConfigurationList" = "F37922C48DA5978D02C9E50E";
+			"productReference" = "E6FC57C251E9E1BEC1D3C0D2";
+			"productType" = "com.apple.product-type.application";
+			"packageProductDependencies" = ("9D062BAFFF17BA8B9A1215C4", "AD0000000000000000000002");
+			"productName" = "PaperConfettiBenchmarks";
+			"isa" = "PBXNativeTarget";
+			"buildPhases" = ("905DB04043B7311D06A28734", "660B9ECA35201038EA43D198", "12A78AD7BB4C0410A4A933CB");
+			"dependencies" = ();
+			"name" = "PaperConfettiBenchmarks";
+			"buildRules" = ();
+		};
+		"4DDE1B02B46FB05CF1955EC0" = {
+			"path" = "../Examples/UITests/PaperConfettiExampleUITests.swift";
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"sourceTree" = "<group>";
+		};
+		"1EE63A94BAD0DF0FCB0E7B8C" = {
+			"isa" = "PBXGroup";
+			"name" = "Products";
+			"children" = ("E6FC57C251E9E1BEC1D3C0D2", "B7480EC88B7F22D0A4757273");
+			"sourceTree" = "<group>";
+		};
+		"862894B703A6DEDF96A9DD6C" = {
+			"isa" = "XCConfigurationList";
+			"defaultConfigurationIsVisible" = "0";
+			"defaultConfigurationName" = "Release";
+			"buildConfigurations" = ("89E1FD6268CC0F221A2BE178", "E6DE6C99132752C914FEF632");
+		};
+		"5A8C91857F674E16E2724F47" = {
+			"isa" = "XCBuildConfiguration";
+			"name" = "Release";
+			"buildSettings" = {
+				"MARKETING_VERSION" = "$(MARKETING_VERSION)";
+				"TARGETED_DEVICE_FAMILY" = "1,2";
+				"GENERATE_INFOPLIST_FILE" = "YES";
+				"INFOPLIST_KEY_UILaunchScreen_Generation" = "YES";
+				"INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone" = "UIInterfaceOrientationPortrait";
+				"INFOPLIST_KEY_CFBundleDisplayName" = "Confetti Benchmarks";
+				"SUPPORTED_PLATFORMS" = "iphoneos iphonesimulator";
+				"CODE_SIGN_STYLE" = "Automatic";
+				"PRODUCT_NAME" = "$(TARGET_NAME)";
+				"INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad" = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation" = "YES";
+				"PRODUCT_BUNDLE_IDENTIFIER" = "$(BENCHMARK_BUNDLE_PREFIX)";
+				"SUPPORTS_MACCATALYST" = "NO";
+				"CURRENT_PROJECT_VERSION" = "$(CURRENT_PROJECT_VERSION)";
+				"INFOPLIST_KEY_CADisableMinimumFrameDurationOnPhone" = "YES";
+			};
+		};
+		"D799BAE6088A90139B415FCC" = {
+			"isa" = "PBXContainerItemProxy";
+			"containerPortal" = "98F54143AB4E86B28C3AFEE0";
+			"remoteGlobalIDString" = "7D1043473D55BFA90E8530D3";
+			"remoteInfo" = "PaperConfettiBenchmarks";
+			"proxyType" = "1";
+		};
+		"942EEBBACD6C88CAE7F29B29" = {
+			"isa" = "XCBuildConfiguration";
+			"name" = "Release";
+			"buildSettings" = {
+				"GENERATE_INFOPLIST_FILE" = "YES";
+				"SUPPORTED_PLATFORMS" = "iphoneos iphonesimulator";
+				"MARKETING_VERSION" = "$(MARKETING_VERSION)";
+				"SUPPORTS_MACCATALYST" = "NO";
+				"CODE_SIGN_STYLE" = "Automatic";
+				"PRODUCT_BUNDLE_IDENTIFIER" = "$(BENCHMARK_BUNDLE_PREFIX).uitests";
+				"TEST_TARGET_NAME" = "PaperConfettiBenchmarks";
+				"TARGETED_DEVICE_FAMILY" = "1,2";
+				"PRODUCT_NAME" = "$(TARGET_NAME)";
+				"CURRENT_PROJECT_VERSION" = "$(CURRENT_PROJECT_VERSION)";
+				"INFOPLIST_KEY_CADisableMinimumFrameDurationOnPhone" = "YES";
+				"INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone" = "UIInterfaceOrientationPortrait";
+				"INFOPLIST_KEY_CFBundleDisplayName" = "Confetti Benchmarks";
+			};
+		};
+		"BECB265224D91761C05FDA33" = {
+			"isa" = "XCConfigurationList";
+			"defaultConfigurationIsVisible" = "0";
+			"defaultConfigurationName" = "Release";
+			"buildConfigurations" = ("FCB48D8F88BCDB0ED9FADFD7", "942EEBBACD6C88CAE7F29B29");
+		};
+		"D8DB4DBA0EDA126EB56B0149" = {
+			"path" = "App/BenchmarkApp.swift";
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"sourceTree" = "<group>";
+		};
+		"8F69D2603037B23E80BB9FA3" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "4DDE1B02B46FB05CF1955EC0";
+		};
+		"98F54143AB4E86B28C3AFEE0" = {
+			"buildConfigurationList" = "862894B703A6DEDF96A9DD6C";
+			"packageReferences" = ("582681C2EAE02B3F3D399C0C", "AD0000000000000000000001");
+			"targets" = ("7D1043473D55BFA90E8530D3", "A94A8FE5CCB19BA61C4C0873");
+			"developmentRegion" = "en";
+			"knownRegions" = ("en", "Base");
+			"isa" = "PBXProject";
+			"compatibilityVersion" = "Xcode 14.0";
+			"productRefGroup" = "1EE63A94BAD0DF0FCB0E7B8C";
+			"projectDirPath" = "";
+			"attributes" = {
+				"LastUpgradeCheck" = "1640";
+				"BuildIndependentTargetsInParallel" = "YES";
+				"TargetAttributes" = {
+					"7D1043473D55BFA90E8530D3" = {
+						"CreatedOnToolsVersion" = "16.4";
+					};
+					"A94A8FE5CCB19BA61C4C0873" = {
+						"TestTargetID" = "7D1043473D55BFA90E8530D3";
+						"CreatedOnToolsVersion" = "16.4";
+					};
+				};
+			};
+			"hasScannedForEncodings" = "0";
+			"projectRoot" = "";
+			"mainGroup" = "EDA6D6223944636B9C5B54AA";
+		};
+		"9582264AEA45B02C066472D5" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "60B113B85B8598141E10B3E2";
+		};
+		"60B113B85B8598141E10B3E2" = {
+			"path" = "../Examples/Showcase/ShowcaseView.swift";
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"sourceTree" = "<group>";
+		};
+		"89E1FD6268CC0F221A2BE178" = {
+			"isa" = "XCBuildConfiguration";
+			"name" = "Debug";
+			"buildSettings" = {
+				"ONLY_ACTIVE_ARCH" = "YES";
+				"DEBUG_INFORMATION_FORMAT" = "dwarf";
+				"SWIFT_ACTIVE_COMPILATION_CONDITIONS" = "DEBUG $(inherited)";
+				"MARKETING_VERSION" = "0.1.0";
+				"CLANG_ENABLE_MODULES" = "YES";
+				"ENABLE_TESTABILITY" = "YES";
+				"ENABLE_USER_SCRIPT_SANDBOXING" = "YES";
+				"SWIFT_OPTIMIZATION_LEVEL" = "-Onone";
+				"SDKROOT" = "iphoneos";
+				"BENCHMARK_BUNDLE_PREFIX" = "org.paperconfetti.benchmarks";
+				"SWIFT_VERSION" = "5.0";
+				"IPHONEOS_DEPLOYMENT_TARGET" = "16.0";
+				"CURRENT_PROJECT_VERSION" = "1";
+			};
+		};
+		"EDA6D6223944636B9C5B54AA" = {
+			"isa" = "PBXGroup";
+			"sourceTree" = "<group>";
+			"children" = ("AB0000000000000000000004", "AB0000000000000000000003", "AB0000000000000000000002", "AB0000000000000000000001", "D8DB4DBA0EDA126EB56B0149", "60B113B85B8598141E10B3E2", "4DDE1B02B46FB05CF1955EC0", "1EE63A94BAD0DF0FCB0E7B8C");
+		};
+		"B7480EC88B7F22D0A4757273" = {
+			"path" = "PaperConfettiBenchmarksUITests.xctest";
+			"isa" = "PBXFileReference";
+			"explicitFileType" = "wrapper.cfbundle";
+			"sourceTree" = "BUILT_PRODUCTS_DIR";
+		};
+		"660B9ECA35201038EA43D198" = {
+			"isa" = "PBXFrameworksBuildPhase";
+			"buildActionMask" = "2147483647";
+			"files" = ("1566E4DB435687FD6CCB2B92", "AD0000000000000000000003");
+			"runOnlyForDeploymentPostprocessing" = "0";
+		};
+		"E6DE6C99132752C914FEF632" = {
+			"isa" = "XCBuildConfiguration";
+			"name" = "Release";
+			"buildSettings" = {
+				"ENABLE_USER_SCRIPT_SANDBOXING" = "YES";
+				"CLANG_ENABLE_MODULES" = "YES";
+				"MARKETING_VERSION" = "0.1.0";
+				"IPHONEOS_DEPLOYMENT_TARGET" = "16.0";
+				"ONLY_ACTIVE_ARCH" = "NO";
+				"DEBUG_INFORMATION_FORMAT" = "dwarf-with-dsym";
+				"SWIFT_OPTIMIZATION_LEVEL" = "-O";
+				"SWIFT_VERSION" = "5.0";
+				"SDKROOT" = "iphoneos";
+				"BENCHMARK_BUNDLE_PREFIX" = "org.paperconfetti.benchmarks";
+				"ENABLE_TESTABILITY" = "NO";
+				"CURRENT_PROJECT_VERSION" = "1";
+			};
+		};
+		"905DB04043B7311D06A28734" = {
+			"isa" = "PBXSourcesBuildPhase";
+			"buildActionMask" = "2147483647";
+			"files" = ("8666B3F79AAE091833C0B6FB", "9582264AEA45B02C066472D5", "AC0000000000000000000001", "AC0000000000000000000002", "AC0000000000000000000003");
+			"runOnlyForDeploymentPostprocessing" = "0";
+		};
+		"8666B3F79AAE091833C0B6FB" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "D8DB4DBA0EDA126EB56B0149";
+		};
+		"FCB48D8F88BCDB0ED9FADFD7" = {
+			"isa" = "XCBuildConfiguration";
+			"name" = "Debug";
+			"buildSettings" = {
+				"GENERATE_INFOPLIST_FILE" = "YES";
+				"SUPPORTED_PLATFORMS" = "iphoneos iphonesimulator";
+				"MARKETING_VERSION" = "$(MARKETING_VERSION)";
+				"SUPPORTS_MACCATALYST" = "NO";
+				"CODE_SIGN_STYLE" = "Automatic";
+				"PRODUCT_BUNDLE_IDENTIFIER" = "$(BENCHMARK_BUNDLE_PREFIX).uitests";
+				"TEST_TARGET_NAME" = "PaperConfettiBenchmarks";
+				"TARGETED_DEVICE_FAMILY" = "1,2";
+				"PRODUCT_NAME" = "$(TARGET_NAME)";
+				"CURRENT_PROJECT_VERSION" = "$(CURRENT_PROJECT_VERSION)";
+				"INFOPLIST_KEY_CADisableMinimumFrameDurationOnPhone" = "YES";
+				"INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone" = "UIInterfaceOrientationPortrait";
+				"INFOPLIST_KEY_CFBundleDisplayName" = "Confetti Benchmarks";
+			};
+		};
+		"1566E4DB435687FD6CCB2B92" = {
+			"isa" = "PBXBuildFile";
+			"productRef" = "9D062BAFFF17BA8B9A1215C4";
+		};
+		"E9FAD0C6CD43534327C0AF90" = {
+			"isa" = "PBXTargetDependency";
+			"target" = "7D1043473D55BFA90E8530D3";
+			"targetProxy" = "D799BAE6088A90139B415FCC";
+		};
+		"A94A8FE5CCB19BA61C4C0873" = {
+			"buildConfigurationList" = "BECB265224D91761C05FDA33";
+			"productReference" = "B7480EC88B7F22D0A4757273";
+			"productType" = "com.apple.product-type.bundle.ui-testing";
+			"productName" = "PaperConfettiBenchmarksUITests";
+			"isa" = "PBXNativeTarget";
+			"buildPhases" = ("7CB9C5DBBDFFE89694C24C30", "160A76D81E8CCDDAB058444F");
+			"dependencies" = ("E9FAD0C6CD43534327C0AF90");
+			"name" = "PaperConfettiBenchmarksUITests";
+			"buildRules" = ();
+		};
+		"E9B2E96ABC5F6856F2BE79CF" = {
+			"isa" = "XCBuildConfiguration";
+			"name" = "Debug";
+			"buildSettings" = {
+				"MARKETING_VERSION" = "$(MARKETING_VERSION)";
+				"TARGETED_DEVICE_FAMILY" = "1,2";
+				"GENERATE_INFOPLIST_FILE" = "YES";
+				"INFOPLIST_KEY_UILaunchScreen_Generation" = "YES";
+				"INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone" = "UIInterfaceOrientationPortrait";
+				"INFOPLIST_KEY_CFBundleDisplayName" = "Confetti Benchmarks";
+				"SUPPORTED_PLATFORMS" = "iphoneos iphonesimulator";
+				"CODE_SIGN_STYLE" = "Automatic";
+				"PRODUCT_NAME" = "$(TARGET_NAME)";
+				"INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad" = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation" = "YES";
+				"PRODUCT_BUNDLE_IDENTIFIER" = "$(BENCHMARK_BUNDLE_PREFIX)";
+				"SUPPORTS_MACCATALYST" = "NO";
+				"CURRENT_PROJECT_VERSION" = "$(CURRENT_PROJECT_VERSION)";
+				"INFOPLIST_KEY_CADisableMinimumFrameDurationOnPhone" = "YES";
+			};
+		};
+		"AB0000000000000000000001" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "App/BenchmarkModel.swift";
+			"sourceTree" = "<group>";
+		};
+		"AC0000000000000000000001" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "AB0000000000000000000001";
+		};
+		"AB0000000000000000000002" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "App/BenchmarkView.swift";
+			"sourceTree" = "<group>";
+		};
+		"AC0000000000000000000002" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "AB0000000000000000000002";
+		};
+		"AB0000000000000000000003" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "App/Measurements.swift";
+			"sourceTree" = "<group>";
+		};
+		"AC0000000000000000000003" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "AB0000000000000000000003";
+		};
+		"AB0000000000000000000004" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "UITests/BenchmarkSmokeTests.swift";
+			"sourceTree" = "<group>";
+		};
+		"AC0000000000000000000004" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "AB0000000000000000000004";
+		};
+		"AD0000000000000000000001" = {
+			"isa" = "XCRemoteSwiftPackageReference";
+			"repositoryURL" = "https://github.com/simibac/ConfettiSwiftUI.git";
+			"requirement" = {
+				"kind" = "revision";
+				"revision" = "f45961f97bbae6fff6e2e64546fea0189425ad92";
+			};
+		};
+		"AD0000000000000000000002" = {
+			"isa" = "XCSwiftPackageProductDependency";
+			"package" = "AD0000000000000000000001";
+			"productName" = "ConfettiSwiftUI";
+		};
+		"AD0000000000000000000003" = {
+			"isa" = "PBXBuildFile";
+			"productRef" = "AD0000000000000000000002";
+		};
+	};
+	"rootObject" = "98F54143AB4E86B28C3AFEE0";
+}

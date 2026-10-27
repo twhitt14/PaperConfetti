@@ -84,3 +84,46 @@ results for Xcode 16.4 and 26.6 are recorded above.
 Physical 60 Hz/120 Hz profiling and a minimum-iOS runtime run remain follow-up
 checks described in [PUBLISHING.md](PUBLISHING.md). The renderer targets iOS 16+, but simulator
 tests do not establish device GPU/FPS, energy, or every supported OS behavior.
+
+## Automated profiling suite — October 26, 2026
+
+The independent benchmark app and `tools/profile.py` now provide the device
+workflow documented in [PROFILING.md](Documentation/PROFILING.md). The public
+library and its dependency-free package manifest are unchanged.
+
+Local validation used Xcode 27.2 and the dedicated PaperConfetti Example iOS
+27.2 simulator:
+
+- Seven Python regression tests cover physical-device selection, certificate
+  team selection, result identity/completeness, warm-up exclusion and reports.
+- `swift test` and the full `tools/validate.py` suite passed, including the iOS
+  renderer tests, real example gestures, Release build and DocC.
+- The final `python3 tools/profile.py --simulator-smoke` command passed, including
+  both renderers, checkpoint/report collection, the native protocol smoke test
+  and the two real overlay interaction tests. Its evidence is in
+  `.artifacts/profile-20261027T051610Z-d775f9/`.
+- The benchmark app and UI-test target compiled in Release for a physical iPhone
+  with signing disabled for this compile-only check.
+- The full benchmark protocol completed all 36 timing trials and 24 memory
+  cycles on the simulator. Natural completion and explicit cancellation left
+  PaperConfetti inactive.
+- Screenshots confirmed that both the new renderer and the pinned historical
+  renderer emit particles. These visual checks are separate from performance
+  claims; screenshots were never part of a reported physical-device session.
+- The host notification handshake, a Time Profiler recording/export on a test
+  process, and an Allocations recording/export on the simulator benchmark app
+  were exercised successfully. CoreDevice launch JSON was also verified.
+
+Evidence lives under ignored `.artifacts/validation-20261027T051442Z/`,
+`.artifacts/full-protocol-validation/`,
+`.artifacts/simulator-allocation-validation/`, and
+`.artifacts/host-recorder-validation/cpu.trace`. Deliberate unsupported-platform
+probes are retained alongside their error logs; they are not successful runs.
+
+No physical phone was connected. Physical signing/install, CoreDevice container
+file transfers, and Animation Hitches recording must still be confirmed on the
+first iPhone run. Apple does not support Hitches on this simulator, and its
+CoreDevice simulator surface does not support Transfer Files; the smoke command
+uses `simctl` for those local operations. These checks establish working
+benchmark automation and cleanup, not an iPhone speedup, hitch rate, energy
+measurement, leak-proof certification, or Wordie integration performance.
