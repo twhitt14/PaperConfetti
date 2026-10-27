@@ -45,7 +45,12 @@ struct Scenario {
 
     func run(size: CGSize) async {
         UIApplication.shared.isIdleTimerDisabled = true
-        defer { UIApplication.shared.isIdleTimerDisabled = false; controller.cancel(); burst = nil }
+        defer {
+            // Successful passes stay on screen while the Mac exports/cools down.
+            // Re-enabling auto-lock here can lock a 30-second phone between passes.
+            if !complete { UIApplication.shared.isIdleTimerDisabled = false }
+            controller.cancel(); burst = nil
+        }
         do {
             guard !UIAccessibility.isReduceMotionEnabled else { throw Failure("Turn off Reduce Motion for the timing run; accessibility is tested separately.") }
             guard !ProcessInfo.processInfo.isLowPowerModeEnabled else { throw Failure("Turn off Low Power Mode, let the phone cool, then rerun.") }

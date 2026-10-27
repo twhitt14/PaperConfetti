@@ -6,7 +6,7 @@ Run from the PaperConfetti repository on a Mac with Xcode 16 or later (new enoug
 
 1. Connect your iPhone by USB, unlock it, and accept **Trust This Computer** if asked. In **Settings → Privacy & Security → Developer Mode**, enable Developer Mode and complete the required restart if it is not already enabled.
 2. Sign into your Apple account in **Xcode → Settings → Accounts**. Xcode needs an **Apple Development** signing identity for your team. The script automatically selects it when only one development team is available. Otherwise pass `--team ABCDE12345` once; find the team ID in your Apple Developer membership details. The choice is remembered in ignored `.artifacts/profile-settings.json` after successful build/install. No password is read or saved by the script.
-3. Turn off Low Power Mode and Reduce Motion for the timing run. Let the phone cool. Use a quiet foreground session without screen recording, mirroring, a debugger, or competing profiling tools. Keep the same brightness, power connection and display settings for repeat comparisons. The app temporarily prevents auto-lock while running.
+3. Turn off Low Power Mode and Reduce Motion for the timing run. Let the phone cool. Use a quiet foreground session without screen recording, mirroring, a debugger, or competing profiling tools. Keep the same brightness, power connection and display settings for repeat comparisons. The benchmark screen prevents auto-lock during playback and the export/cooldown gaps; normal auto-lock resumes when that screen closes.
 4. Run:
 
    ```sh

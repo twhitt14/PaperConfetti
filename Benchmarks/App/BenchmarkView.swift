@@ -56,6 +56,10 @@ struct BenchmarkView: View {
             }
             .confettiOverlay(model.controller)
             .task { await model.run(size: geometry.size) }
+            .onDisappear {
+                model.controller.cancel()
+                UIApplication.shared.isIdleTimerDisabled = false
+            }
         }
     }
 }
