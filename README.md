@@ -176,6 +176,38 @@ package resource. Its outer-weighted launch distribution and timing curves
 informed this independent renderer. All 13 festive silhouettes are original
 vector paths. No runtime dependency on ConfettiSwiftUI is required.
 
+## Initial on-device CPU comparison
+
+In one iPhone 18 Pro Max session, PaperConfetti used **89–91% less process CPU
+time** than the historical **ConfettiSwiftUI 1.1.0** renderer in matched classic
+confetti workloads:
+
+| Workload (total particles) | PaperConfetti CPU time | ConfettiSwiftUI 1.1.0 CPU time | Reduction |
+| --- | ---: | ---: | ---: |
+| 180 · one cannon | 95.8 ms | 1,073.8 ms | 91.1% |
+| 180 · five cannons | 106.1 ms | 1,217.0 ms | 91.3% |
+| 720 · five cannons | 131.0 ms | 1,239.1 ms | 89.4% |
+
+Measured October 27, 2026, on iOS 27.0.1 with an optimized Release build and
+Animation Hitches instrumentation. Each value is the median of three warm trials,
+after excluding the first round. Each trial lasts approximately 5.5–5.9 seconds
+and includes the same simulated keyboard dismissal and scrolling. Both renderers
+use three classic shape types, the same palette, nominal particle size, counts
+and cannon spacing; their randomized trajectories differ.
+
+These are **whole-process CPU measurements**, including the common host UI, from
+one device session at fair thermal state. They do not establish FPS, GPU cost,
+energy savings, or a comparison with newer ConfettiSwiftUI releases. The separate
+**720-particle, 13-shape festive stress case still has reported visible hitches**;
+lower app CPU does not guarantee smooth presentation at that density. The default
+example uses 180 particles. Repeat on representative devices before choosing a
+larger budget.
+
+The [sanitized per-trial results](Documentation/benchmarks/2026-10-27-iphone18-pro-max.json)
+include every timing case, the warm-up samples, exact comparison revision and
+measurement limits. See the [repeatable profiling protocol](Documentation/PROFILING.md)
+to reproduce the comparison.
+
 ## Performance scope
 
 Trajectories and shared textures are prepared once per pop; Core Animation owns
