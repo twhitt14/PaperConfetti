@@ -127,3 +127,60 @@ CoreDevice simulator surface does not support Transfer Files; the smoke command
 uses `simctl` for those local operations. These checks establish working
 benchmark automation and cleanup, not an iPhone speedup, hitch rate, energy
 measurement, leak-proof certification, or Wordie integration performance.
+
+
+## Physical profiling recovery — October 27, 2026
+
+The first iPhone 18 Pro Max / iOS 27.0.1 run completed all 36 timing trials,
+but the runner terminated Instruments after its old 90-second finalization
+limit. Valid app samples were recovered into that run's report; the partial
+recording remains explicitly incomplete. A short capture then proved that
+30 seconds of playback could require about 149 seconds to record and save.
+
+The runner now launches directly through Instruments (avoiding an observed
+CoreDevice PID-attachment lookup failure), allows 15 minutes for finalization,
+prints save progress, and retains independently validated samples on failure.
+The app clearly distinguishes a saved pass from a finished suite. Only the
+exact installed benchmark bundle is stopped; a waiting screen prevents
+between-pass auto-lock without changing the phone's settings.
+
+The full recovery session saved all three recordings and passed every device
+interaction check. The phone was reconnected during timing finalization; the
+CPU/memory passes and gesture tests subsequently completed normally:
+
+| Check | Result |
+| --- | --- |
+| Animation timing trials | 36 completed; 3.2 GB trace saved after about 12 minutes of finalization |
+| CPU trials | 18 completed; trace saved |
+| Memory cycles | 24 completed; trace saved; PaperConfetti inactive after every settle/cancel |
+| Physical iPhone protocol/gesture tests | 3 passed |
+| Dedicated simulator protocol/gesture tests | 3 passed |
+| Python runner regression tests | 12 passed |
+
+The full run also revealed incomplete scenario labels with template defaults.
+Afterward, explicit Points of Interest and a retention window covering the
+entire recording limit were verified in separate 45-second simulator and
+physical-phone captures: all three trial intervals remained available, including
+the early intervals more than 30 seconds before capture end. Future exports
+retain compact hitch/signpost tables; per-frame/GPU details stay in the trace.
+Do not use the earlier full run for per-scenario hitch comparisons. Its complete
+app measurements remain valid process-CPU/scheduling/memory diagnostics.
+
+Ignored evidence:
+
+- `.artifacts/profile-20261027T064016Z-c581c3/`: original partial recording and
+  recovered samples; original reports backed up before recovery.
+- `.artifacts/profile-20261027T071826Z-346a53/`: completed three-pass session,
+  full raw measurements and physical `Interactions.xcresult`.
+- `.artifacts/ProfileRecoveryInteractions.xcresult`: three simulator UI tests.
+- `.artifacts/recording-recovery-20261027/direct-verified/`: successful short
+  device launch/capture/export.
+- `.artifacts/recording-recovery-20261027/device-full-window/` and
+  `simulator-full-window/`: verified early-marker retention.
+- `.artifacts/recording-recovery-20261027/completion-screen.png`: inspected
+  completion messaging.
+
+No production renderer or package API changed. These are one-phone diagnostics,
+not a public FPS/energy benchmark or proof that the complete Wordie app has no
+hitches. Repeat full sessions on cool 60 Hz and ProMotion devices before broader
+performance claims.

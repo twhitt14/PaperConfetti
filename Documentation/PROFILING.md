@@ -14,7 +14,7 @@ Run from the PaperConfetti repository on a Mac with Xcode 16 or later (new enoug
    ```
 
 5. Approve macOS developer-tools access if Apple asks. If recording times out while a first-time permission dialog is pending, complete that dialog and rerun. Device trust/signing/Developer Mode cannot safely be bypassed by the runner.
-6. Leave the phone alone for roughly **10–15 minutes** plus the first build/download. It plays every scenario, changes its simulated game keyboard and scroll position, records three Instruments traces, then runs real gesture tests. The terminal prints the report path when finished. Open `report.html` in that folder.
+6. Leave the phone alone for roughly **15–30 minutes** plus the first build/download (large device traces can take longer to finalize). It plays every scenario, changes its simulated game keyboard and scroll position, records three Instruments traces, then runs real gesture tests. The phone reports completion of each pass, not completion of the entire suite. Keep it connected while the terminal finalizes recordings; it prints progress every 20 seconds and the final report path when finished. Open `report.html` in that folder.
 
 If multiple phones are connected, choose one:
 
@@ -29,11 +29,11 @@ python3 tools/profile.py --device 'My iPhone' --team ABCDE12345
 
 - Selects exactly one connected **physical iPhone**; unavailable devices and simulators are excluded. Rejects ambiguous selection.
 - Builds the standalone `Benchmarks/PaperConfettiBenchmarks.xcodeproj` in **Release**, installs it, and runs without LLDB, coverage, sanitizers, or the example's extended-flight UI-testing mode.
-- Starts each Instruments recording first. A host Darwin notification confirms the recorder is ready; only then does the runner place a unique start marker in the app's private Documents directory. Playback waits for that marker, so first-use work is inside the recording. Result IDs prevent old files being mistaken for a new run.
-- Records **Animation Hitches**, **Time Profiler**, and **Allocations** in separate launches. There are short cooldown gaps. The app rejects Low Power Mode/Reduce Motion, stops on serious/critical thermal state or lost foreground, and records thermal state per trial. It does not change your accessibility settings.
+- Lets Instruments launch the benchmark directly, avoiding unreliable lookup of a separately launched device process by PID. Only the exact installed benchmark bundle is stopped between passes; other apps are untouched. A host Darwin notification confirms the recorder is ready; only then does the runner place a unique start marker in the app's private Documents directory. Playback waits for that marker, so first-use work is inside the recording. Result IDs prevent old files being mistaken for a new run.
+- Records **Animation Hitches**, **Time Profiler**, and **Allocations** in separate launches, explicitly including **Points of Interest** to identify each scenario and a retention window covering the entire recording limit. This avoids inheriting a template’s short rolling window. There are short cooldown gaps. The app rejects Low Power Mode/Reduce Motion, stops on serious/critical thermal state or lost foreground, and records thermal state per trial. It does not change your accessibility settings.
 - Saves checkpoint results between trials, outside the measured intervals. It avoids device result polling during the expected measurement window. Missing/duplicate trials, no-op timing samples and incomplete flights stop the run with an incomplete report, not a misleading success.
 - Tests actual taps, a toggle, scrolling, navigation, cancellation and the Reduce Motion preview through the production SwiftUI overlay using XCUITest. These separate functional tests deliberately use longer-lived particles so gestures reliably happen during flight; those timings are never included in performance statistics.
-- Preserves local artifacts and partial evidence on failure. A local lock prevents simultaneous runners from colliding. It does not publish anything or contact an analytics service.
+- Allows up to 15 minutes for each recording to finalize; a physical-device capture can take longer to save than it took to record. Preserves validated app measurements in the report even when a recorder fails, continues independent remaining checks, and still returns a failure status if any recording is incomplete. Preserves local artifacts and partial evidence on failure. A local lock prevents simultaneous runners from colliding. It does not publish anything or contact an analytics service.
 
 ## Scenarios and fair comparisons
 
@@ -65,7 +65,7 @@ Everything is under `.artifacts/profile-<timestamp>-<id>/` (ignored by Git). Rep
 - `timing.trace`: open with Instruments, select **Animation Hitches**, and inspect each **Confetti trial** signpost. This is the authority for actual frame delivery/hitches. The report deliberately does not invent a hitch count when Xcode's export schema changes.
 - `cpu.trace`: inspect **Time Profiler** call stacks and first-pop setup work.
 - `memory.trace`: inspect **Allocations** and **Memory cycle** signposts for retained objects after natural completion/cancellation. This is not an automatic leak-proof certification.
-- `*-toc.xml` and available animation/hitch/signpost table exports preserve the schemas offered by your Xcode version. Other tables remain available in the original traces.
+- `*-toc.xml` lists the schemas offered by your Xcode version. Compact hitch and signpost tables are exported; the much larger per-frame/GPU tables remain available in the original traces.
 - `Interactions.xcresult`: actual overlay interaction and Reduce Motion-preview test evidence.
 - Logs for build/install/record/export/test failures. Failed or interrupted runs keep an **incomplete** report.
 
@@ -82,6 +82,6 @@ python3 tools/profile.py --simulator-smoke
 
 The smoke command uses only the dedicated **PaperConfetti Example** simulator, builds Release, verifies the control and both renderers complete, and runs the same real gesture tests. It produces a clearly labeled simulator-only report and skips Instruments; CI must not mistake simulator metrics for device benchmarks. The native benchmark smoke test also runs from the shared benchmark scheme.
 
-No real phone was connected during the initial implementation validation. The first physical run still needs to verify this Mac/device's signing, developer permissions, and supported Instruments templates. A failure there preserves the logs needed to resolve it; it is not a valid performance result.
+The first physical run verified development signing, installation, file transfers and all 36 timing trials on an iPhone 18 Pro Max. Its recorder exceeded the original 90-second finalization limit, so that report is incomplete. A short Animation Hitches capture subsequently saved and exported successfully after more than two minutes. The runner now allows longer finalization and recovers validated samples when a trace fails. Consult `VALIDATION.md` for complete-session evidence; a successful playback alone is not a complete profiling session.
 
 References: [Apple: improving responsiveness](https://developer.apple.com/documentation/xcode/improving-app-responsiveness), [Apple: command-line tools](https://developer.apple.com/documentation/xcode/xcode-command-line-tool-reference), [ConfettiSwiftUI 1.1.0](https://github.com/simibac/ConfettiSwiftUI/releases/tag/1.1.0).

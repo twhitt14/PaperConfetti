@@ -39,7 +39,7 @@ struct BenchmarkView: View {
                 } else {
                     Text("Solved in 7 turns!").font(.title2.bold()).frame(height: 100)
                 }
-                Text(model.complete ? "Done • results saved" : "Automated run — please leave this screen open")
+                Text(model.complete ? "The Mac is finishing this recording. Keep your iPhone connected." : "Automated run — please leave this screen open")
                     .font(.caption).foregroundStyle(.secondary).accessibilityIdentifier("benchmark-complete")
             }
             .padding(20).frame(maxWidth: .infinity, maxHeight: .infinity)

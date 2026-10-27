@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Recover saved benchmark measurements after recording failures, allow slow device trace finalization with visible progress, and launch the app directly through Instruments. Clarify per-pass completion and keep the screen awake between recordings.
+
 - One-command physical iPhone profiling suite with separate animation, CPU and memory recordings, a pinned historical ConfettiSwiftUI comparison, interaction checks, local reports and a simulator CI smoke test.
 
 ## 0.1.0 — 2026-10-26

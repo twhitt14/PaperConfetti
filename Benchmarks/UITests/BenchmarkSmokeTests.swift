@@ -7,7 +7,7 @@ final class BenchmarkSmokeTests: XCTestCase {
         app.launch()
         let status = app.staticTexts["benchmark-status"]
         XCTAssertTrue(status.waitForExistence(timeout: 10))
-        let done = NSPredicate(format: "label == %@", "Profiling complete")
+        let done = NSPredicate(format: "label == %@", "This pass is saved")
         expectation(for: done, evaluatedWith: status)
         waitForExpectations(timeout: 45)
     }

@@ -2,8 +2,9 @@ import importlib.util
 import json
 from pathlib import Path
 import tempfile
+import subprocess
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 
 SPEC = importlib.util.spec_from_file_location('profile_suite', Path(__file__).resolve().parents[1] / 'profile.py')
 p = importlib.util.module_from_spec(SPEC)
@@ -60,6 +61,61 @@ class ProfileTests(unittest.TestCase):
             bad = self.payload(); mutate(bad['rows'])
             with self.assertRaises(p.ProfileError): p.validate_results(bad, 'r', 'timing', True)
 
+    def test_slow_finalization_is_not_killed_at_old_90_second_limit(self):
+        process = Mock(returncode=0)
+        process.poll.side_effect = [None, None, None, 0]
+        process.wait.side_effect = [subprocess.TimeoutExpired('xctrace', 20), 0]
+        with patch.object(p.time, 'monotonic', side_effect=[0, 0, 100, 100]):
+            p.finish_recording(process, Path('timing.trace'))
+        process.terminate.assert_not_called()
+        process.kill.assert_not_called()
+        process.send_signal.assert_called_once_with(p.signal.SIGINT)
+
+    def test_unresponsive_recorder_has_bounded_cleanup(self):
+        process = Mock(returncode=-15)
+        process.poll.return_value = None
+        with patch.object(p.time, 'monotonic', side_effect=[0, 901]), self.assertRaises(p.ProfileError):
+            p.finish_recording(process, Path('timing.trace'))
+        process.terminate.assert_called_once()
+
+    def test_interrupt_during_finalization_stops_our_recorder(self):
+        process = Mock()
+        process.poll.return_value = None
+        process.wait.side_effect = [KeyboardInterrupt(), 0]
+        with self.assertRaises(KeyboardInterrupt):
+            p.finish_recording(process, Path('timing.trace'))
+        process.terminate.assert_called_once()
+
+    def test_samples_survive_recording_failure_but_require_matching_start_receipt(self):
+        with tempfile.TemporaryDirectory() as temp:
+            output = Path(temp)
+            (output / 'timing-measurements.json').write_text(json.dumps(self.payload()))
+            with self.assertRaises(p.ProfileError): p.saved_measurements(output, 'timing', True)
+            (output / 'start-r').write_text('different')
+            with self.assertRaises(p.ProfileError): p.saved_measurements(output, 'timing', True)
+            (output / 'start-r').write_text('r')
+            self.assertEqual(p.saved_measurements(output, 'timing', True), self.payload())
+            self.assertIsNone(p.saved_measurements(output, 'memory', True))
+
+    def test_cleanup_selects_only_the_exact_installed_benchmark_bundle(self):
+        runner = p.Runner(Mock(simulator_smoke=False), Path('/tmp'), self.phone(), 'TEAMABCDE1')
+        apps = {'result': {'apps': [
+            {'bundleIdentifier': runner.bundle, 'url': 'file:///apps/ours.app/'},
+            {'bundleIdentifier': 'another.app', 'url': 'file:///apps/other.app/'}]}}
+        processes = {'result': {'runningProcesses': [
+            {'processIdentifier': 1, 'executable': 'file:///apps/ours.app/Benchmark'},
+            {'processIdentifier': 2, 'executable': 'file:///apps/other.app/Benchmark'},
+            {'processIdentifier': 3, 'executable': 'file:///apps/ours.app-copy/Benchmark'}]}}
+        with patch.object(p, 'run', return_value='') as command, \
+             patch.object(Path, 'read_text', side_effect=[json.dumps(apps), json.dumps(processes)]):
+            runner.stop_benchmark()
+        self.assertEqual(command.call_count, 3)
+        self.assertIn('1', command.call_args.args[0])
+        self.assertNotIn('2', command.call_args.args[0])
+        with patch.object(p, 'run', return_value=''), \
+             patch.object(Path, 'read_text', return_value=json.dumps({'result': {'apps': []}})), self.assertRaises(p.ProfileError):
+            runner.stop_benchmark()
+
     def test_summary_excludes_warmup_and_never_invents_missing_metrics(self):
         rows = [{'scenario': 's', 'warmup': w, 'cpu_ms': cpu, 'footprint_end_bytes': 1048576}
                 for w, cpu in [(True, 999), (False, 10), (False, 20)]]
@@ -72,7 +128,7 @@ class ProfileTests(unittest.TestCase):
     def test_report_escapes_names_and_preserves_failure(self):
         with tempfile.TemporaryDirectory() as temp:
             path = Path(temp)
-            p.write_report(path, {'status': 'incomplete', 'error': '<script>bad</script>', 'traces': []}, [])
+            p.write_report(path, {'status': 'incomplete', 'error': '<script>bad</script>', 'review_notes': ['<script>note</script>'], 'traces': []}, [])
             self.assertIn('&lt;script&gt;', (path / 'report.html').read_text())
             self.assertNotIn('<script>', (path / 'report.html').read_text())
             self.assertEqual(json.loads((path / 'report.json').read_text())['status'], 'incomplete')

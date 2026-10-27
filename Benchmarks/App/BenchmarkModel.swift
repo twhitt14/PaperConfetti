@@ -52,6 +52,11 @@ struct Scenario {
             controller.cancel(); burst = nil
         }
         do {
+            if args.contains("--runner-hold") {
+                status = "The Mac is preparing the next check…"
+                while !Task.isCancelled { try await pause(1) }
+                return
+            }
             guard !UIAccessibility.isReduceMotionEnabled else { throw Failure("Turn off Reduce Motion for the timing run; accessibility is tested separately.") }
             guard !ProcessInfo.processInfo.isLowPowerModeEnabled else { throw Failure("Turn off Low Power Mode, let the phone cool, then rerun.") }
             if !args.contains("--autostart") {
@@ -67,7 +72,7 @@ struct Scenario {
             try await pause(1)
             if pass == "memory" { try await memoryRun(size: size) }
             else { try await timingRun(size: size) }
-            complete = true; status = "Profiling complete"
+            complete = true; status = "This pass is saved"
         } catch {
             self.error = error.localizedDescription
             status = "Stopped: \(error.localizedDescription)"

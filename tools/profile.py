@@ -142,6 +142,58 @@ def validate_results(payload, run_id, pass_name, smoke=False):
     return rows
 
 
+def saved_measurements(output, pass_name, simulator):
+    """Recover independently saved app samples, even when Instruments fails later."""
+    path = output / (pass_name + '-measurements.json')
+    if not path.exists():
+        return None
+    payload = json.loads(path.read_text())
+    run_id = payload.get('run_id', '')
+    if not re.fullmatch(r'[a-zA-Z0-9-]+', run_id):
+        raise ProfileError('Invalid measurement identity; refusing recovery.')
+    marker = output / ('start-' + run_id)
+    if not marker.exists() or marker.read_text() != run_id:
+        raise ProfileError('Measurement file has no matching start receipt; refusing recovery.')
+    validate_results(payload, run_id, pass_name, smoke=simulator)
+    return payload
+
+
+def terminate_recording(process):
+    if process.poll() is None:
+        process.terminate()
+        try:
+            process.wait(timeout=20)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait(timeout=20)
+
+
+def finish_recording(process, trace, timeout=900):
+    """Allow slow device trace processing without mistaking app completion for export completion."""
+    print(f'Finalizing {trace.name}. Instruments may need several minutes after playback finishes…', flush=True)
+    started = time.monotonic()
+    try:
+        if process.poll() is None:
+            process.send_signal(signal.SIGINT)
+        while process.poll() is None:
+            remaining = timeout - (time.monotonic() - started)
+            if remaining <= 0:
+                terminate_recording(process)
+                raise ProfileError(f'Instruments did not finalize {trace.name} within {timeout} seconds. '
+                                   'Any saved app measurements are preserved; this trace is partial.')
+            try:
+                process.wait(timeout=min(20, remaining))
+            except subprocess.TimeoutExpired:
+                print(f'  Still finalizing {trace.name} ({int(time.monotonic() - started)} seconds). '
+                      'Keep the iPhone connected and unlocked.', flush=True)
+    except KeyboardInterrupt:
+        terminate_recording(process)
+        raise
+    if process.returncode != 0:
+        raise ProfileError(f'Instruments could not finalize {trace.name} (exit {process.returncode}). '
+                           'Any saved app measurements are preserved; keep the recording log.')
+
+
 def summarize(payloads):
     summary = []
     for payload in payloads:
@@ -167,7 +219,9 @@ def export_trace(trace, output):
     schemas = sorted({table.get('schema') for table in ET.parse(toc).iter('table') if table.get('schema')})
     # Export the exact schemas this Xcode offers, without guessing a private column layout.
     # These are diagnostics for Instruments review, not fabricated zero-hitch statistics.
-    selected = [s for s in schemas if any(k in s.lower() for k in ('hitch', 'signpost', 'animation'))]
+    selected = [s for s in schemas if s in ('hitches', 'OSSignpostIntervals', 'os-signpost')]
+    # Full per-frame/GPU tables can be enormous; keep them in the trace. Export
+    # the compact event/interval tables needed to locate a particular trial.
     exported = []
     for index, schema in enumerate(selected):
         path = output / f'{trace.stem}-table-{index}.xml'
@@ -200,17 +254,18 @@ def write_report(output, receipt, payloads):
                 if settled:
                     memory_trends.append(f'<li>{renderer}: first settled {settled[0]:.2f} MiB; last {settled[-1]:.2f} MiB; change {settled[-1]-settled[0]:+.2f} MiB. Whole-process samples; inspect allocations before attributing retained memory.</li>')
     cold_rows = ''.join(f'<tr><td>{cell(r["scenario"])}</td><td>{cell(r.get("cpu_ms"))}</td><td>{cell(r.get("first_callback_ms"))}</td></tr>' for r in first_use)
-    traces = ''.join(f'<li><a href="{html.escape(t["trace"])}">{html.escape(t["trace"])}</a></li>' for t in receipt.get('traces', []))
+    traces = ''.join(f'<li><a href="{html.escape(t["trace"])}">{html.escape(t["trace"])}</a> {html.escape(t.get("status", ""))} {html.escape(t.get("error", ""))}</li>' for t in receipt.get('traces', []))
+    notes = ''.join(f'<li>{html.escape(str(note))}</li>' for note in receipt.get('review_notes', []))
     (output / 'report.html').write_text(f'''<!doctype html><meta charset="utf-8"><title>PaperConfetti profile</title>
 <style>body{{font:16px system-ui;max-width:1200px;margin:40px auto;padding:0 24px;background:#111827;color:#e5e7eb}}a{{color:#67e8f9}}td,th{{text-align:left;padding:10px;border-bottom:1px solid #374151}}table{{border-collapse:collapse}}code{{color:#67e8f9}}</style>
 <h1>PaperConfetti device profile</h1><p>{html.escape(receipt['status'])}</p>
-<p>{html.escape(str(receipt.get('error', '')))}</p>
+<p>{html.escape(str(receipt.get('error', '')))}</p><ul>{notes}</ul>
 <p>Warm medians below exclude round 0. Raw JSON retains first-use and warm-up trials. CPU is process CPU time. Callback p99 measures main-thread scheduling, <strong>not GPU frames, FPS, or hitch rate</strong>. Physical animation hitches require the Instruments trace.</p>
 <p>Compare classic3 rows only against ConfettiSwiftUI 1.1.0. Festive13 and memory-soak rows have different visual workloads. Legacy randomization is unseeded. This measures a standalone host, not a complete Wordie game.</p>
 <table><tr><th>Pass</th><th>Scenario</th><th>Samples</th><th>CPU ms</th><th>Callback p99 ms</th><th>Settled MiB</th></tr>{rows}</table>
 <h2>First renderer use</h2><table><tr><th>Scenario</th><th>CPU ms across trial</th><th>First callback ms after trigger</th></tr>{cold_rows}</table>
 <h2>Settled memory trend</h2><ul>{"".join(memory_trends)}</ul>
-<h2>Recordings</h2><ul>{traces}</ul><p>Open Animation Hitches for actual frame delivery, Time Profiler for expensive stacks, and Allocations for retained objects. Signposts identify every trial/cycle. There is no automatic performance pass/fail threshold; compare repeat runs on the same phone.</p>
+<h2>Recordings</h2><ul>{traces}</ul><p>Open Animation Hitches for actual frame delivery, Time Profiler for expensive stacks, and Allocations for retained objects. Use the available signposts to identify trials/cycles; check any recording notes above. There is no automatic performance pass/fail threshold; compare repeat runs on the same phone.</p>
 <p>Gesture checks: {html.escape(receipt.get('interactions', 'not run'))}. Memory footprint may retain bounded system/texture caches; inspect its trend and live allocations, not just the initial-to-final difference.</p>
 <p><a href="report.json">Run metadata and summary JSON</a></p>''')
 
@@ -260,8 +315,10 @@ class Runner:
                  '--domain-type', 'appDataContainer', '--domain-identifier', self.bundle,
                  '--source', marker, '--destination', 'Documents/' + marker.name, '--timeout', '30'], self.output / 'trigger.log', 40)
 
-    def launch(self, run_id, pass_name):
+    def launch(self, run_id, pass_name, hold=False):
         arguments = ['--run-id=' + run_id, '--pass=' + pass_name] + (['--smoke'] if self.sim else [])
+        if hold:
+            arguments.append('--runner-hold')
         if self.sim:
             text = run(['xcrun', 'simctl', 'launch', '--terminate-running-process', self.device['udid'], self.bundle, *arguments])
             return int(text.strip().split(':')[-1])
@@ -270,25 +327,54 @@ class Runner:
              '--json-output', path, '--timeout', '30', self.bundle, '--', *arguments], self.output / (pass_name + '-launch.log'), 40)
         return json.loads(path.read_text())['result']['process']['processIdentifier']
 
+    def benchmark_processes(self):
+        # Resolve the exact installed bundle before selecting any process. Never
+        # terminate another app just because its executable has the same name.
+        apps_file = self.output / 'installed-apps.json'
+        run(['xcrun', 'devicectl', 'device', 'info', 'apps', '--device', self.device['id'],
+             '--json-output', apps_file, '--timeout', '20'], self.output / 'installed-apps.log', 30)
+        apps = [app for app in json.loads(apps_file.read_text())['result']['apps']
+                if app.get('bundleIdentifier') == self.bundle]
+        if len(apps) != 1 or not apps[0].get('url', '').startswith('file:///'):
+            raise ProfileError('Cannot identify the installed benchmark app safely.')
+        prefix = apps[0]['url'].rstrip('/') + '/'
+        processes_file = self.output / 'device-processes.json'
+        run(['xcrun', 'devicectl', 'device', 'info', 'processes', '--device', self.device['id'],
+             '--json-output', processes_file, '--timeout', '20'], self.output / 'device-processes.log', 30)
+        return [item['processIdentifier'] for item in json.loads(processes_file.read_text())['result']['runningProcesses']
+                if item.get('executable', '').startswith(prefix)]
+
+    def stop_benchmark(self):
+        for pid in self.benchmark_processes():
+            run(['xcrun', 'devicectl', 'device', 'process', 'terminate', '--device', self.device['id'],
+                 '--pid', str(pid), '--timeout', '20'])
+
     def record(self, pass_name, template, seconds):
         run_id = uuid.uuid4().hex
-        pid = self.launch(run_id, pass_name)
+        if self.sim:
+            self.launch(run_id, pass_name)
+        else:
+            self.stop_benchmark()
         trace = self.output / (pass_name + '.trace')
         recording = None
+        recording_started = False
         try:
             if not self.sim:
                 notification = TraceStart()
                 try:
                     with (self.output / (pass_name + '-record.log')).open('w') as log:
                         recording = subprocess.Popen(['xcrun', 'xctrace', 'record', '--device', self.device['udid'],
-                            '--template', template, '--attach', str(pid), '--output', str(trace),
-                            '--time-limit', f'{seconds + 150}s', '--notify-tracing-started', notification.name],
-                            stdout=log, stderr=subprocess.STDOUT)
+                            '--template', template, '--instrument', 'Points of Interest', '--output', str(trace),
+                            '--time-limit', f'{seconds + 150}s', '--window', f'{seconds + 150}s',
+                            '--notify-tracing-started', notification.name,
+                            '--launch', '--', self.bundle, '--run-id=' + run_id, '--pass=' + pass_name],
+                            stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
                     deadline = time.monotonic() + 90
                     while not notification.changed():
                         if recording.poll() is not None or time.monotonic() > deadline:
                             raise ProfileError(f'Instruments did not start {template}. Check {pass_name}-record.log; approve any macOS developer-tools permission and rerun.')
                         time.sleep(0.2)
+                    recording_started = True
                 finally:
                     notification.close()
             print(f'{template}: running the automatic scenarios…', flush=True)
@@ -307,16 +393,35 @@ class Runner:
                     break
                 time.sleep(10)
             validate_results(payload, run_id, pass_name, smoke=self.sim)
+            print(f'Saved {len(payload["rows"])} {pass_name} trials from the iPhone.' if not self.sim
+                  else 'Saved simulator smoke results.', flush=True)
+        except KeyboardInterrupt:
+            # A second Ctrl-C must not signal the recorder twice through a shared
+            # terminal process group. Explicitly stop our isolated recording job.
+            if recording:
+                terminate_recording(recording)
+            raise
         finally:
-            if recording and recording.poll() is None:
-                recording.send_signal(signal.SIGINT)
+            if recording:
                 try:
-                    recording.wait(timeout=90)
-                except subprocess.TimeoutExpired:
-                    recording.terminate()
-                    recording.wait(timeout=20)
-        if recording and recording.returncode not in (0,):
-            raise ProfileError(f'Instruments could not finalize {trace.name}. Keep the partial recording and log.')
+                    if recording.poll() is None:
+                        if recording_started:
+                            finish_recording(recording, trace)
+                        else:
+                            terminate_recording(recording)
+                finally:
+                    if recording_started:
+                        # Instruments owns this launch and terminates it after
+                        # saving. Keep the screen awake during exports/cooldown,
+                        # outside every measured recording. Never restart trials.
+                        try:
+                            self.launch(uuid.uuid4().hex, 'between-passes', hold=True)
+                        except ProfileError as error:
+                            print(f'Could not keep the benchmark screen awake: {error}', flush=True)
+        if recording and recording.returncode != 0:
+            raise ProfileError(f'Instruments could not finalize {trace.name} (exit {recording.returncode}). App measurements are preserved.')
+        if recording:
+            print(f'Exporting {trace.name} tables…', flush=True)
         return payload, export_trace(trace, self.output) if recording else None
 
     def interactions(self):
@@ -379,7 +484,18 @@ def main():
             passes = [('timing', 'Animation Hitches', 22)] if args.simulator_smoke else [
                 ('timing', 'Animation Hitches', 238), ('cpu', 'Time Profiler', 120), ('memory', 'Allocations', 124)]
             for name, template, seconds in passes:
-                payload, trace = runner.record(name, template, seconds)
+                print(f'Pass {len(payloads) + 1} of {len(passes)}: {template}', flush=True)
+                try:
+                    payload, trace = runner.record(name, template, seconds)
+                except ProfileError as error:
+                    # A recorder failure must not discard valid app measurements
+                    # or prevent independent CPU/memory/interaction checks.
+                    payload = saved_measurements(output, name, args.simulator_smoke)
+                    if payload is None:
+                        raise
+                    trace = {'trace': name + '.trace', 'status': 'failed', 'error': str(error)}
+                    receipt.setdefault('recording_errors', []).append(str(error))
+                    print(f'Recording issue: {error} Continuing with the remaining checks.', flush=True)
                 payloads.append(payload)
                 if trace:
                     receipt['traces'].append(trace)
@@ -389,11 +505,27 @@ def main():
                     time.sleep(20)
             runner.interactions()
             receipt['interactions'] = 'passed — real taps, toggle, scroll, navigation, stop and Reduce Motion preview'
+            if receipt.get('recording_errors'):
+                raise ProfileError('Measurements and interaction checks finished, but some Instruments recordings failed. See report.html.')
             receipt['status'] = 'Simulator automation check passed — not physical performance evidence' if args.simulator_smoke else 'Recordings and interaction checks complete — review traces before making performance claims'
         except (Exception, KeyboardInterrupt) as error:
             receipt['error'] = str(error) or 'Interrupted by user'
             raise
         finally:
+            if not args.simulator_smoke:
+                try:
+                    runner.stop_benchmark()
+                except ProfileError as cleanup_error:
+                    receipt['cleanup_warning'] = str(cleanup_error)
+            known_passes = {payload['pass'] for payload in payloads}
+            for name in ('timing', 'cpu', 'memory'):
+                if name not in known_passes:
+                    try:
+                        recovered = saved_measurements(output, name, args.simulator_smoke)
+                        if recovered:
+                            payloads.append(recovered)
+                    except (ProfileError, ValueError, OSError) as recovery_error:
+                        receipt.setdefault('recovery_errors', []).append(str(recovery_error))
             known = {t['trace'] for t in receipt['traces']}
             for partial in sorted(output.glob('*.trace')):
                 if partial.name not in known:
