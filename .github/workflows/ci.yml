@@ -40,6 +40,7 @@ jobs:
         run: |
           python3 -m unittest discover -s tools/tests -v
           python3 tools/profile.py --simulator-smoke
+          python3 tools/compare.py --simulator-smoke
       - name: Preserve test evidence
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
@@ -53,6 +54,10 @@ jobs:
             .artifacts/profile-*/*.html
             .artifacts/profile-*/*.log
             .artifacts/profile-*/*.xcresult
+            .artifacts/study-*/**/*.json
+            .artifacts/study-*/**/*.html
+            .artifacts/study-*/**/*.log
+            .artifacts/study-*/*.xcresult
           include-hidden-files: true
           if-no-files-found: warn
           retention-days: 7

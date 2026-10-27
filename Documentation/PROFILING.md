@@ -85,3 +85,7 @@ The smoke command uses only the dedicated **PaperConfetti Example** simulator, b
 The first physical run verified development signing, installation, file transfers and all 36 timing trials on an iPhone 18 Pro Max. Its recorder exceeded the original 90-second finalization limit, so that report is incomplete. A short Animation Hitches capture subsequently saved and exported successfully after more than two minutes. The runner now allows longer finalization and recovers validated samples when a trace fails. Consult `VALIDATION.md` for complete-session evidence; a successful playback alone is not a complete profiling session.
 
 References: [Apple: improving responsiveness](https://developer.apple.com/documentation/xcode/improving-app-responsiveness), [Apple: command-line tools](https://developer.apple.com/documentation/xcode/xcode-command-line-tool-reference), [ConfettiSwiftUI 1.1.0](https://github.com/simibac/ConfettiSwiftUI/releases/tag/1.1.0).
+
+## Renderer alternatives and shape-cost investigation
+
+Use [the renderer study](RENDERER_STUDY.md) for the expanded matrix and per-trial Instruments hitch attribution. `tools/profile.py` preserves this original ConfettiSwiftUI comparison. `tools/compare.py` adds controlled fancy-shape comparisons and a hands-on visual mode; it reuses the same signing, recording, cleanup and device-selection machinery. Do not compare totals from different protocols as if their visual workloads were identical.

@@ -10,3 +10,5 @@
 - Generated builds, logs, xcresults and captures belong under ignored `.artifacts/`. Commit intended source/doc/test files; preserve unrelated owner work.
 
 - Physical profiling: use `python3 tools/profile.py` and `Documentation/PROFILING.md`. Keep the pinned ConfettiSwiftUI dependency benchmark-only. Never report simulator callback timings as device frame delivery; preserve incomplete results and distinguish instrument passes. The dedicated simulator smoke command and Python runner tests are suitable for CI.
+
+- Renderer experiments live in `Benchmarks/App/Study*.swift` and `Benchmarks/Study.json`, with `tools/compare.py` and `Documentation/RENDERER_STUDY.md`. Keep them benchmark-only until physical evidence supports changing the library. Every new renderer must preserve input pass-through and bounded cleanup. Never equate callback timing, simulator results or missing trace exports with smooth physical frame delivery. Keep the original ConfettiSwiftUI protocol reproducible.

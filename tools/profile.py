@@ -315,8 +315,14 @@ class Runner:
                  '--domain-type', 'appDataContainer', '--domain-identifier', self.bundle,
                  '--source', marker, '--destination', 'Documents/' + marker.name, '--timeout', '30'], self.output / 'trigger.log', 40)
 
+    def launch_arguments(self, run_id, pass_name):
+        return ['--run-id=' + run_id, '--pass=' + pass_name] + (['--smoke'] if self.sim else [])
+
+    def validate_measurements(self, payload, run_id, pass_name):
+        return validate_results(payload, run_id, pass_name, smoke=self.sim)
+
     def launch(self, run_id, pass_name, hold=False):
-        arguments = ['--run-id=' + run_id, '--pass=' + pass_name] + (['--smoke'] if self.sim else [])
+        arguments = self.launch_arguments(run_id, pass_name) if not hold else ['--run-id=' + run_id, '--pass=' + pass_name]
         if hold:
             arguments.append('--runner-hold')
         if self.sim:
@@ -367,7 +373,7 @@ class Runner:
                             '--template', template, '--instrument', 'Points of Interest', '--output', str(trace),
                             '--time-limit', f'{seconds + 150}s', '--window', f'{seconds + 150}s',
                             '--notify-tracing-started', notification.name,
-                            '--launch', '--', self.bundle, '--run-id=' + run_id, '--pass=' + pass_name],
+                            '--launch', '--', self.bundle, *self.launch_arguments(run_id, pass_name)],
                             stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
                     deadline = time.monotonic() + 90
                     while not notification.changed():
@@ -391,8 +397,10 @@ class Runner:
                 payload = json.loads(destination.read_text())
                 if payload.get('finished'):
                     break
+                if getattr(self, 'reject_early_poll', False):
+                    raise ProfileError('Playback exceeded the recording budget. This run is incomplete because collecting results may have overlapped a trial; rerun with a larger --trial-budget.')
                 time.sleep(10)
-            validate_results(payload, run_id, pass_name, smoke=self.sim)
+            self.validate_measurements(payload, run_id, pass_name)
             print(f'Saved {len(payload["rows"])} {pass_name} trials from the iPhone.' if not self.sim
                   else 'Saved simulator smoke results.', flush=True)
         except KeyboardInterrupt:

@@ -184,3 +184,22 @@ No production renderer or package API changed. These are one-phone diagnostics,
 not a public FPS/energy benchmark or proof that the complete Wordie app has no
 hitches. Repeat full sessions on cool 60 Hz and ProMotion devices before broader
 performance claims.
+
+## Controlled renderer study — October 27, 2026
+
+The expanded [study](Documentation/RENDERER_STUDY.md) is implemented in the benchmark app only. Package source, dependencies, public API and version remain unchanged.
+
+Local checks used Xcode 27.2 (27B48) and the dedicated PaperConfetti Example simulator:
+
+- 22 Python tests passed, including matched-factor validation, fresh-process cold cases, missing/no-op result rejection, XML references, process filtering, overlap/clipping, duplicate/missing markers, and unknown hitch attribution.
+- `swift test` and `python3 tools/validate.py` passed again: 8 macOS tests, 14 iOS package tests, 2 example UI tests, Release builds and DocC. Evidence: `.artifacts/validation-20261027T083904Z/`.
+- The new runner completed the six-case renderer smoke matrix; separate runs exercised reduced/adaptive motion sampling, texture resolution, padded/trilinear filtering and three fresh-process cold trials.
+- The memory smoke completed ten cycles across all five renderer configurations, exercising both explicit cancellation and natural completion. Evidence: `.artifacts/study-20261027T085613Z-b4f33c/`.
+- Five benchmark UI tests passed, including the original protocol and accessibility/navigation tests, completion/cleanup of every new renderer, and actual taps counted while each overlay was active plus scrolling to visible content beneath it.
+- The benchmark app compiled in Release for generic iOS with signing disabled (compile-only), in addition to simulator builds.
+- A fresh 35-second Instruments Time Profiler + Points of Interest recording retained both new study intervals. The exported XML parser resolved real references and matched process IDs, labels and durations against the app results. Evidence: `.artifacts/study-trace-verification/verification.json`. This was a simulator marker/export test, not physical hitch evidence.
+- Screenshots of shipping layers, adjustable layers, CAEmitterLayer, SpriteKit, atlas, padded textures, trilinear filtering and adaptive motion were captured and inspected under `.artifacts/study-visual-check/`.
+
+The deterministic motion audit (720 particles, seed 1000) measured maximum sampled-trajectory error of 33.712 points with 49 uniform samples, 55.542 points with 25 uniform samples, and 0.534 points with 26–41 adaptive samples. This quantifies approximation of the underlying physics, **not frame delivery or a device speed improvement**. The adaptive candidate remains benchmark-only pending physical CPU/hitch and visual comparison. Evidence: `.artifacts/study-20261027T083201Z-50f20e/`.
+
+The physical iPhone was disconnected during this work. No new physical renderer ranking, GPU result, or production optimization is claimed. Run `python3 tools/compare.py --suite all` on the connected phone to collect that evidence. The previous physical ConfettiSwiftUI comparison remains independently documented above.

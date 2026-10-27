@@ -219,3 +219,7 @@ evidence; profile representative physical devices before adopting larger effects
 ## Profile on your iPhone
 
 Connect and unlock your iPhone, then run `python3 tools/profile.py`. The automated Release suite records animation hitches, CPU and memory, compares the historical ConfettiSwiftUI renderer, and tests touches through live confetti. See [physical-device setup and result interpretation](Documentation/PROFILING.md). The comparison dependency belongs only to the benchmark app; the library stays dependency-free.
+
+### Renderer and shape experiments
+
+The [renderer study](Documentation/RENDERER_STUDY.md) compares the shipping renderer with adjustable Core Animation layers, CAEmitterLayer, and SpriteKit (including a texture-atlas variant). It isolates particle size, individual shapes, texture resolution, cache warming, motion sampling and background UI movement. Run `python3 tools/compare.py --suite all` for the complete physical-device study, or `python3 tools/compare.py --visual-review` to replay the alternatives by hand. Reports distinguish actual Instruments hitches from display-link scheduling and keep incomplete evidence unavailable. These are benchmark-only experiments; the released renderer is unchanged.

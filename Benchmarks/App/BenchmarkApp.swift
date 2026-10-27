@@ -7,6 +7,8 @@ struct BenchmarkApp: App {
             if ProcessInfo.processInfo.arguments.contains("--ui-testing") {
                 // Existing gesture tests use a deliberately extended flight, never for timing.
                 ShowcaseView().preferredColorScheme(.dark)
+            } else if ProcessInfo.processInfo.arguments.contains(where: { $0.hasPrefix("--study=") }) || ProcessInfo.processInfo.arguments.contains("--visual-review") {
+                StudyView().preferredColorScheme(.dark)
             } else {
                 BenchmarkView().preferredColorScheme(.dark)
             }
