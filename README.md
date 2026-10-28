@@ -144,10 +144,10 @@ initial mounting, scene changes, cancellation and repeated seeded events.
 app callbacks, or per-particle timers. Adaptive trajectory samples and shared,
 cached raster poses preserve the fast launch, varied shapes and 3D paper tilt.
 The whole burst is prepared under a paused clock, then started together with
-load-dependent headroom. Cells share one protected birth window; each cannon’s
-delay applies to its visible flight, so later cannons do not depend on another
-short emission window. This prevents early cannons missing their brief emission
-window while a large burst is being submitted. Cancellation invalidates pending
+load-dependent headroom. The local clock starts one emission period into its
+schedule, creating the first particle without relying on a brief birth window.
+The next birth is later than the longest allowed burst and its cleanup. Each
+cannon’s delay applies to its visible flight. Cancellation invalidates pending
 starts and removes the entire layer tree; natural completion releases it too.
 
 Limits: 32 cannons, 6,000 requested particles, 16 colors, delays up to 60 seconds;

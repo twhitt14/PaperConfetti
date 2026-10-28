@@ -37,9 +37,21 @@ lifetimes include that delay, and motion tracks own all translation. Three full
 local pixel repetitions passed (18 cannon replays, three complete 5,760-slot
 grids and three negative controls), followed by all 17 package tests, three
 example UI tests, Release builds and DocC. Evidence: `.artifacts/Release02SharedBirth.xcresult`
-and `.artifacts/validation-20261028T201322Z/`. The earlier
-physical receipt predates this final launch adjustment. Fresh CI/device receipts
-are recorded in the release notes rather than claiming the older run covers it.
+and `.artifacts/validation-20261028T201322Z/`. All three physical pixel checks also
+passed at this stage (`Release02DeviceSharedBirth.xcresult`). Hosted Xcode 26.6
+then passed, but Xcode 16.4 still intermittently produced entirely empty bursts.
+
+The final startup revision removes the short cell emission duration altogether.
+The frozen parent starts at one 1,024-second emission period, and each cell emits
+once per period. This puts the first birth at launch without a narrow deadline;
+the second is beyond the longest bounded flight (under 305 seconds) and cleanup.
+Cannon delays remain visible-flight delays. A regression checks the maximum
+allowed flight against the next birth, alongside the delayed-cannon and lifecycle
+checks. The three simulator pixel regressions passed with this clock, including
+all 5,760 distinct occupied slots. The final local validation passed nine macOS
+and 18 iOS tests, three example UI tests, Release builds and DocC
+(`.artifacts/validation-20261028T204712Z/`). Final hosted/device receipts are recorded in
+the release notes rather than claiming an older run covers the new clock.
 
 This physical evidence establishes emission correctness on the tested device,
 not a general FPS/energy or all-device capacity guarantee. The historical 0.1 CPU

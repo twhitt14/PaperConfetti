@@ -129,7 +129,7 @@
                 XCTAssertTrue(view.layer.sublayers?.isEmpty ?? true, "A delayed readiness callback cannot resurrect a cancelled burst")
             }
         }
-        func testDelayedCannonsShareBirthWindowButKeepTheirFlightDelay() throws {
+        func testDelayedCannonsSharePrerolledEmissionButKeepTheirFlightDelay() throws {
             let view = ConfettiLayerView()
             let burst = ConfettiBurst(cannons: [
                 .init(x: 20, y: 200, count: 1), .init(x: 80, y: 200, delay: 5, count: 1)
@@ -139,16 +139,28 @@
             let clock = try XCTUnwrap(view.layer.sublayers?.first)
             let emitters = try XCTUnwrap(clock.sublayers?.compactMap { $0 as? CAEmitterLayer })
             let particles = burst.particles(paletteCount: 1)
+            XCTAssertEqual(clock.timeOffset, ConfettiLayerView.emissionPeriod)
             XCTAssertEqual(emitters.count, 2)
             for (emitter, particle) in zip(emitters, particles) {
                 XCTAssertEqual(emitter.beginTime, 0.000001)
                 XCTAssertEqual(emitter.opacity, 0, "Hide cells until their flight animation starts")
                 let flight = try XCTUnwrap(emitter.animation(forKey: "flight") as? CAAnimationGroup)
-                XCTAssertEqual(flight.beginTime, max(0.000001, particle.delay))
+                XCTAssertEqual(flight.beginTime, ConfettiLayerView.emissionPeriod + max(0.000001, particle.delay))
                 let cell = try XCTUnwrap(emitter.emitterCells?.first)
+                XCTAssertEqual(cell.birthRate, Float(1 / ConfettiLayerView.emissionPeriod))
+                XCTAssertEqual(cell.duration, .infinity, "Do not expire emission before the render server starts")
                 XCTAssertGreaterThan(Double(cell.lifetime), particle.endTime)
                 XCTAssertEqual(cell.velocity, 0, "A delayed cell must not drift before launch")
             }
+        }
+        func testNextNativeBirthIsBeyondEvenTheLongestAllowedBurst() {
+            let burst = ConfettiBurst(cannons: [.init(x: 0, y: 0, delay: 60, count: 6_000)],
+                                      seed: 42, radius: 5_000, fall: 5_000,
+                                      fallSpeedRange: 0.25...0.25)
+            let end = burst.particles(paletteCount: 1).map(\.endTime).max()!
+            XCTAssertGreaterThan(end, 300, "Exercise the maximum delay, range and slowest descent")
+            XCTAssertLessThan(end + 2, ConfettiLayerView.emissionPeriod,
+                              "Cleanup, including the detached-host watchdog, precedes another birth")
         }
         func testCompletedBurstReleasesItsLayers() async throws {
             let view = ConfettiLayerView()

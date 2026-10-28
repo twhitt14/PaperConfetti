@@ -6,7 +6,7 @@
   and `.flat` appearances on configurations and bursts. Existing pop calls still work.
 - Individual parabolic rise/fall timing, a soft scattered blast edge, and shared
   raster starting poses preserve variety without per-frame app updates.
-- Staged launch clocks and a shared birth window protect all cannons under heavy submission load;
+- Staged, pre-rolled launch clocks avoid short birth windows under heavy submission load;
   cancellation also invalidates pending launches. Requested populations are bounded
   at 6,000, with visible 5,760-piece regression coverage.
 - Example app gains a flat/3D picker and up to 5,760-piece stress control.

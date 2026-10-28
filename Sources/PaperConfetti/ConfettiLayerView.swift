@@ -10,6 +10,9 @@ import UIKit
     private var cleanup: DispatchWorkItem?
     private var generation = 0
     private var gate: ConfettiLaunchGate?
+    // Exactly representable reciprocal; longer than every bounded burst (under 305s).
+    // Start one emission period into local time instead of closing a tiny birth window.
+    static let emissionPeriod: TimeInterval = 1_024
     /// Requested active population, not a readback of Core Animation's live particles.
     public private(set) var particleLayerCount = 0
     /// Preparation plus asynchronous start headroom, in seconds. Not first-frame latency.
@@ -42,7 +45,7 @@ import UIKit
         let shapes = Array(Set(particles.map(\.shape))).sorted { $0.rawValue < $1.rawValue }
         let textures = ConfettiNativeTextures.make(colors: colors, size: burst.size, scale: scale, shapes: shapes)
         let clock = CALayer(); clock.name = "PaperConfetti.Clock"
-        clock.speed = 0; clock.timeOffset = 0
+        clock.speed = 0; clock.timeOffset = Self.emissionPeriod
         let token = generation
         CATransaction.begin(); CATransaction.setDisableActions(true)
         for p in particles {
@@ -52,17 +55,19 @@ import UIKit
             emitter.renderMode = .unordered; emitter.preservesDepth = false
             emitter.seed = UInt32(truncatingIfNeeded: p.phase.bitPattern ^ p.delay.bitPattern ^ p.dx.bitPattern)
             emitter.opacity = 0
-            // All cells share the protected initial birth window. Cannon delays
-            // belong to their visible flight, not another short future birth window.
+            // All cells share a clock. Cannon delays apply to visible flight only.
             emitter.beginTime = 0.000001
             let cell = CAEmitterCell()
             let shape = shapes.firstIndex(of: p.shape)!
             let pose = Int(p.phase / (2 * .pi) * 8) % 8
             cell.contents = textures[(p.color * shapes.count + shape) * 8 + pose]
             cell.contentsScale = scale
-            // First birth at 40ms is inside the window, next at 80ms is outside.
+            // Leave emission enabled: a short cell.duration can expire before the
+            // render server first visits a large layer tree. The pre-rolled clock
+            // crosses the first birth immediately, with the next safely beyond cleanup.
             // CAEmitterCell exposes a rate, not an exact-count emission operation.
-            cell.birthRate = 25; cell.duration = 0.06; cell.lifetime = Float(p.endTime + 0.06)
+            cell.birthRate = Float(1 / Self.emissionPeriod)
+            cell.lifetime = Float(p.endTime + 0.06)
             cell.velocity = 0 // The sampled flight owns translation, including while waiting.
             cell.velocityRange = 0; cell.emissionLongitude = 0; cell.emissionRange = 0
             cell.xAcceleration = 0; cell.yAcceleration = 0
@@ -82,7 +87,7 @@ import UIKit
                 tilt.fromValue = p.phase; tilt.toValue = p.phase + p.tumble * p.lifetime
                 group.animations?.append(tilt)
             }
-            group.duration = p.lifetime; group.beginTime = max(0.000001, p.delay)
+            group.duration = p.lifetime; group.beginTime = Self.emissionPeriod + max(0.000001, p.delay)
             group.timingFunction = CAMediaTimingFunction(name: .linear)
             group.animations?.forEach { $0.duration = p.lifetime }
             clock.addSublayer(emitter); emitter.add(group, forKey: "flight")
