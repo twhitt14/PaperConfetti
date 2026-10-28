@@ -34,7 +34,7 @@ import os.signpost
         visual = arguments.contains("--visual-review") || !arguments.contains(where: { $0.hasPrefix("--run-id=") })
         let selection = arguments.first { $0.hasPrefix("--study=") }.map { String($0.dropFirst(8)).split(separator: ",").map(String.init) }
         scenarios = selection.map { ids in ids.compactMap { id in StudyScenario.all.first { $0.id == id } } }
-            ?? ["emitter-3d-720", "emitter-720", "sprite-3d-720", "sprite-atlas-3d-720", "sprite-720", "sprite-atlas-720", "layers-720", "adaptive-keyframes", "paper-720"].compactMap { id in StudyScenario.all.first { $0.id == id } }
+            ?? ["emitter-3d-720", "emitter-720", "layers-720", "adaptive-keyframes", "paper-720"].compactMap { id in StudyScenario.all.first { $0.id == id } }
         precondition(!scenarios.isEmpty && (selection == nil || scenarios.count == selection!.count), "Invalid study selection")
         scenario = scenarios[0]; visualCount = scenario.count
     }
@@ -110,9 +110,6 @@ import os.signpost
                     let completion = renderer.completionStats(spec)
                     if spec.renderer == "emitter" && !args.contains("--native-legacy-clock") && !(completion["native_arm_delay_ms"] is Double) {
                         throw BenchmarkModel.Failure("Native launch clock never armed.")
-                    }
-                    if spec.renderer == "sprite" && ((completion["sprite_particles_started"] as? Int) != spec.count || (completion["sprite_scene_updates"] as? Int ?? 0) == 0) {
-                        throw BenchmarkModel.Failure("SpriteKit did not start every requested particle.")
                     }
                     row.merge(completion) { _, new in new }
                     row.merge(setup) { _, new in new }

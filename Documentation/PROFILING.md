@@ -1,5 +1,13 @@
 # Physical-device profiling
 
+**0.2.0 update:** this command now profiles the shipping native renderer against
+the pinned historical ConfettiSwiftUI renderer. Counts and host interaction protocol
+remain comparable, but the approved flight model changed. Do not pool its results
+with the archived 0.1 layer-renderer numbers. The renderer study retains a frozen
+0.1 baseline for reproducing that implementation; check out tag 0.1.0 for its original
+package/example. Flat and 3D variants are available through `tools/compare.py`.
+
+
 Run from the PaperConfetti repository on a Mac with Xcode 16 or later (new enough for your iPhone’s iOS version) and Python 3. No App Store Connect key, TestFlight upload, Cloud credits, paid service, or change to the library is involved. The benchmark app is separate from the example and from Wordie.
 
 ## First run

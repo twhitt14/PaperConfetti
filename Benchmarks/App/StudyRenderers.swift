@@ -1,23 +1,20 @@
 import UIKit
-import SpriteKit
 import SwiftUI
 import PaperConfetti
 
 /// Benchmarks only. The released renderer and public package API stay unchanged.
 @MainActor final class StudyRenderer: UIView {
-    let production = ConfettiLayerView()
+    let production = LegacyPaperLayerView()
+    private let native = ConfettiLayerView()
+    private var usingProductionNative = false
     private let particlesView = UIView()
-    private let sprite = SKView()
     private var removal: DispatchWorkItem?
     private(set) var activeCount = 0
     private(set) var lastStats: [String: Any] = [:]
-    private var scene: StudySpriteScene?
     private var preparationID = 0
     private var preparedImages: [CGImage] = []
     private var preparedNativeImages: [CGImage] = []
     private var nativePoseCache: (key: String, images: [CGImage])?
-    private var preparedSpriteTextures: [SKTexture] = []
-    private var retainedAtlas: SKTextureAtlas?
     private var submittedSampleCount = 0
     private var nativeGate: NativeLaunchGate?
     private var nativeGeneration = 0
@@ -31,35 +28,26 @@ import PaperConfetti
         backgroundColor = .clear; isOpaque = false; isUserInteractionEnabled = false
         accessibilityElementsHidden = true
         particlesView.backgroundColor = .clear; particlesView.isUserInteractionEnabled = false
-        sprite.backgroundColor = .clear; sprite.allowsTransparency = true
-        sprite.isOpaque = false; sprite.layer.isOpaque = false; sprite.layer.backgroundColor = UIColor.clear.cgColor
-        sprite.isUserInteractionEnabled = false; sprite.ignoresSiblingOrder = true
-        sprite.isPaused = true; sprite.isHidden = true
-        [production, particlesView, sprite].forEach(addSubview)
+        [production, particlesView, native].forEach(addSubview)
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? { nil }
     override func layoutSubviews() {
         super.layoutSubviews()
-        [production, particlesView, sprite].forEach { $0.frame = bounds }
-        scene?.size = bounds.size
+        [production, particlesView, native].forEach { $0.frame = bounds }
     }
     override func didMoveToWindow() { super.didMoveToWindow(); if window == nil { cancel() } }
-    var isIdle: Bool { activeCount == 0 && production.particleLayerCount == 0 && (scene?.children.isEmpty ?? true) }
+    var isIdle: Bool { activeCount == 0 && production.particleLayerCount == 0 && native.particleLayerCount == 0 }
     func cancel() {
         nativeGeneration += 1; nativeGate = nil
         removal?.cancel(); removal = nil
-        production.cancel()
+        production.cancel(); native.cancel()
         particlesView.layer.sublayers?.forEach { $0.removeAllAnimations(); $0.removeFromSuperlayer() }
-        // Hide BEFORE clearing/pausing; never expose an old drawable or an empty opaque surface.
-        sprite.isHidden = true
-        scene?.clearParticles()
-        sprite.isPaused = true; activeCount = 0
+        activeCount = 0
     }
     func reset() {
         preparationID += 1
-        cancel(); preparedImages = []; preparedNativeImages = []; preparedSpriteTextures = []; retainedAtlas = nil
-        // Keep the transparent scene attached. Replacing it every replay can flash the surface.
+        cancel(); preparedImages = []; preparedNativeImages = []
     }
     private func scale(_ spec: StudyScenario) -> CGFloat {
         spec.textureScale == 0 ? (window?.screen.scale ?? max(1, traitCollection.displayScale)) : spec.textureScale
@@ -107,44 +95,17 @@ import PaperConfetti
         nativePoseCache = (key, poses)
         return poses
     }
-    private func spriteTextures(_ images: [CGImage], atlas: Bool) -> [SKTexture] {
-        if atlas {
-            let packed = SKTextureAtlas(dictionary: Dictionary(uniqueKeysWithValues: images.enumerated().map { ("piece\($0.offset)", UIImage(cgImage: $0.element)) }))
-            retainedAtlas = packed
-            return images.indices.map { packed.textureNamed("piece\($0)") }
-        }
-        return images.map { SKTexture(cgImage: $0) }
-    }
-    /// Cache priming is outside the measured trial. A cold-textures case is launched alone in a fresh process.
+    /// Warm the same package textures outside the timed trial.
     func prepare(_ spec: StudyScenario) async {
         reset()
-        let generation = preparationID
-        if spec.renderer == "sprite" {
-            if scene == nil {
-                let newScene = StudySpriteScene(size: bounds.size)
-                newScene.backgroundColor = .clear; newScene.scaleMode = .resizeFill
-                scene = newScene; sprite.presentScene(newScene)
-            }
-            sprite.preferredFramesPerSecond = window?.screen.maximumFramesPerSecond ?? 60
-        }
         if spec.prewarm && spec.renderer != "none" {
             preparedImages = images(spec)
-            if spec.renderer == "emitter" { preparedNativeImages = nativeImages(preparedImages, spec: spec) }
-            if spec.renderer == "sprite" {
-                preparedSpriteTextures = spriteTextures(preparedImages, atlas: spec.atlas)
-                await withCheckedContinuation { continuation in
-                    SKTexture.preload(preparedSpriteTextures) { continuation.resume() }
-                }
+            if spec.renderer == "emitter" {
+                if spec.sharedFlight == true || ProcessInfo.processInfo.arguments.contains("--native-legacy-clock") { preparedNativeImages = nativeImages(preparedImages, spec: spec) }
+                var b = spec.burst(size: bounds.size, seed: 1000)
+                b.appearance = spec.native3D == true ? .threeDimensional : .flat
+                native.play(burst: b, colors: Self.colors); native.cancel()
             }
-        }
-        guard generation == preparationID, !Task.isCancelled else { return }
-        if spec.renderer == "sprite", let scene {
-            // Let Metal draw a clear frame before exposing the overlay. Alpha zero
-            // hides the previous drawable while keeping SpriteKit's update loop alive.
-            sprite.alpha = 0; sprite.isHidden = false; sprite.isPaused = false
-            await scene.prepareClearFrame()
-            guard generation == preparationID, !Task.isCancelled else { return }
-            sprite.isHidden = true; sprite.isPaused = true; sprite.alpha = 1
         }
     }
 
@@ -153,9 +114,25 @@ import PaperConfetti
         guard !UIAccessibility.isReduceMotionEnabled, spec.renderer != "none" else { lastStats = ["requested_particles": 0]; return lastStats }
         let start = CACurrentMediaTime()
         if spec.renderer == "paper" {
-            production.play(burst: burst, colors: Self.colors)
+            production.play(burst: LegacyConfettiBurst(burst), colors: Self.colors)
             lastStats = ["setup_ms": (CACurrentMediaTime() - start) * 1000, "requested_particles": production.particleLayerCount,
                          "particle_layers": production.particleLayerCount, "position_samples": 49, "native_count_is_estimate": false]
+            return lastStats
+        }
+        usingProductionNative = spec.renderer == "emitter" && spec.sharedFlight != true && !ProcessInfo.processInfo.arguments.contains("--native-legacy-clock")
+        if usingProductionNative {
+            var b = burst; b.appearance = spec.native3D == true ? .threeDimensional : .flat
+            CATransaction.begin(); CATransaction.setDisableActions(true)
+            native.play(burst: b, colors: Self.colors)
+            configureProductionProbe(spec)
+            if let arg = ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("--native-stall-ms=") }),
+               let ms = Double(arg.dropFirst("--native-stall-ms=".count)), ms.isFinite {
+                Thread.sleep(forTimeInterval: max(0, min(1, ms / 1000)))
+            }
+            CATransaction.commit()
+            lastStats = ["setup_ms": (CACurrentMediaTime() - start) * 1000,
+                         "requested_particles": native.particleLayerCount, "native_count_is_estimate": true,
+                         "native_motion_model": "PaperConfetti-0.2-native", "tilt_enabled": b.appearance == .threeDimensional]
             return lastStats
         }
         let particles = StudyPopulation.particles(burst, paletteCount: Self.colors.count)
@@ -170,7 +147,6 @@ import PaperConfetti
         switch spec.renderer {
         case "layers": layers(particles, textures: textures, spec: spec)
         case "emitter": emitters(particles, textures: nativeTextures, spec: spec)
-        case "sprite": spriteEmitters(particles, textures: textures, spec: spec)
         default: preconditionFailure("Unknown renderer")
         }
         // Native cleanup is scheduled when its staged clock actually starts.
@@ -244,6 +220,7 @@ import PaperConfetti
         }
         let legacy = args.contains("--native-legacy-clock")
         let gridProbe = args.contains("--emission-grid")
+        let emissionProbe = args.contains("--emission-probe")
         let preroll = optionSeconds("--native-preroll-ms=") ?? 0
         let clock = CALayer()
         clock.speed = 0; clock.timeOffset = 0
@@ -289,11 +266,11 @@ import PaperConfetti
             let columns = 60, rows = max(1, Int(ceil(Double(cohorts.count) / 60)))
             let gridPoint = CGPoint(x: (Double(flightIndex % columns) + 0.5) * bounds.width / Double(columns),
                                     y: bounds.height * 0.2 + (Double(flightIndex / columns) + 0.5) * bounds.height * 0.6 / Double(rows))
-            flight.values = track.positions.map { NSValue(cgPoint: gridProbe ? gridPoint : $0) }
+            flight.values = track.positions.map { NSValue(cgPoint: gridProbe ? gridPoint : emissionProbe ? CGPoint(x: p.x, y: p.y) : $0) }
             flight.keyTimes = track.times.map { NSNumber(value: $0 / cohort.duration) }
             flight.calculationMode = .linear
             let alpha = CAKeyframeAnimation(keyPath: "opacity")
-            alpha.values = gridProbe ? track.opacities.map { _ in 1.0 } : track.opacities; alpha.keyTimes = flight.keyTimes
+            alpha.values = emissionProbe ? track.opacities.map { _ in 1.0 } : track.opacities; alpha.keyTimes = flight.keyTimes
             let animation = CAAnimationGroup()
             animation.animations = [flight, alpha]
             if spec.native3D == true {
@@ -360,17 +337,42 @@ import PaperConfetti
         removal = work
         DispatchQueue.main.asyncAfter(deadline: .now() + seconds, execute: work)
     }
-    private func spriteEmitters(_ particles: [ConfettiParticle], textures: [CGImage], spec: StudyScenario) {
-        guard let scene else { preconditionFailure("SpriteKit scene was not prepared") }
-        let atlas = preparedSpriteTextures.isEmpty ? spriteTextures(textures, atlas: spec.atlas) : preparedSpriteTextures
-        scene.play(NativeParticlePlan.groups(particles, shared: spec.sharedFlight == true),
-                   textures: atlas, spec: spec, canvasHeight: bounds.height)
-        sprite.alpha = 1; sprite.isHidden = false; sprite.isPaused = false
+    /// Diagnostic-only layer edits use public CALayer APIs, leaving shipping code
+    /// free of command-line switches. The actual production cell/clock/birth path is tested.
+    private func configureProductionProbe(_ spec: StudyScenario) {
+        guard ProcessInfo.processInfo.arguments.contains("--emission-probe"),
+              let clock = native.layer.sublayers?.first(where: { $0.name == "PaperConfetti.Clock" }) else { return }
+        let grid = ProcessInfo.processInfo.arguments.contains("--emission-grid")
+        let emitters = clock.sublayers ?? [], rows = max(1, Int(ceil(Double(emitters.count) / 60)))
+        for (index, layer) in emitters.enumerated() {
+            guard let emitter = layer as? CAEmitterLayer,
+                  let group = emitter.animation(forKey: "flight") as? CAAnimationGroup else { continue }
+            if grid {
+                emitter.emitterShape = .point; emitter.emitterSize = .zero
+                let cells = emitter.emitterCells
+                cells?.forEach { $0.scale = CGFloat(1.4 / spec.size) }
+                emitter.emitterCells = cells
+            }
+            let point = CGPoint(x: (Double(index % 60) + 0.5) * bounds.width / 60,
+                                y: bounds.height * 0.2 + (Double(index / 60) + 0.5) * bounds.height * 0.6 / Double(rows))
+            for case let track as CAKeyframeAnimation in group.animations ?? [] {
+                if track.keyPath == "position", let first = track.values?.first as? NSValue {
+                    // Keep emitted pieces visible in their own column while XCTest copies pixels.
+                    let fixed = grid ? NSValue(cgPoint: point) : first
+                    track.values = track.values?.map { _ in fixed }
+                }
+                if track.keyPath == "opacity" { track.values = track.values?.map { _ in 1.0 } }
+            }
+            emitter.add(group, forKey: "flight")
+        }
     }
     func completionStats(_ spec: StudyScenario) -> [String: Any] {
-        if spec.renderer == "emitter" { return ["native_arm_delay_ms": nativeArmDelay as Any? ?? NSNull(), "native_staged_clock": !ProcessInfo.processInfo.arguments.contains("--native-legacy-clock")] }
-        guard spec.renderer == "sprite", let scene else { return [:] }
-        return ["sprite_scene_updates": scene.sceneUpdates, "sprite_particles_started": scene.activatedParticles]
+        if spec.renderer == "emitter" {
+            let delay = usingProductionNative ? native.scheduledStartDelay.map { $0 * 1000 } : nativeArmDelay
+            return ["native_arm_delay_ms": delay as Any? ?? NSNull(),
+                    "native_staged_clock": !ProcessInfo.processInfo.arguments.contains("--native-legacy-clock")]
+        }
+        return [:]
     }
     /// These diagnostics run after the measurement interval, never in animation frames.
     func audit(_ spec: StudyScenario, burst: ConfettiBurst) -> [String: Any] {
@@ -392,7 +394,7 @@ import PaperConfetti
         }
         var maxPositionError = 0.0, maxOpacityError = 0.0, maxGroupingError = 0.0
         var sampleCounts: [Int] = []
-        let all = StudyPopulation.particles(burst, paletteCount: 3)
+        let all = usingProductionNative ? burst.particles(paletteCount: 3) : StudyPopulation.particles(burst, paletteCount: 3)
         func inspect(track: StudyTrack, duration: Double,
                      position: (Double) -> CGPoint, opacity: (Double) -> Double) {
             sampleCounts.append(track.times.count)
@@ -419,17 +421,21 @@ import PaperConfetti
                     }
                 }
             }
-        } else if ["layers", "paper"].contains(spec.renderer) {
+        } else if spec.renderer == "paper" {
+            for p in LegacyConfettiBurst(burst).particles(paletteCount: 3) {
+                inspect(track: StudyTrack(legacy: p), duration: p.lifetime,
+                        position: { let point = p.position(at: $0); return CGPoint(x: point.x, y: point.y) },
+                        opacity: { p.opacity(at: $0) })
+            }
+        } else if spec.renderer == "layers" {
             for p in all {
-                inspect(track: StudyTrack(particle: p, spec: spec), duration: spec.renderer == "paper" ? p.lifetime : StudyFlight.duration(p),
-                        position: { t in
-                            if spec.renderer == "paper" { let xy = p.position(at: t); return CGPoint(x: xy.x, y: xy.y) }
-                            return StudyFlight.position(p, at: t)
-                        }, opacity: { spec.renderer == "paper" ? p.opacity(at: $0) : StudyFlight.opacity(p, at: $0) })
+                inspect(track: StudyTrack(particle: p, spec: spec), duration: p.lifetime,
+                        position: { StudyFlight.position(p, at: $0) }, opacity: { p.opacity(at: $0) })
             }
         }
         let poses = spec.renderer == "emitter" ? nativeImages(textures, spec: spec) : []
-        return ["trajectory_audit_scope": spec.renderer == "emitter" ? "parabolic-v5-soft-edge-excludes-native-birth-drift-and-tilt" : (spec.renderer == "sprite" ? "analytic-per-frame-no-keyframe-interpolation-audit" : "individual-particles"),
+        defer { if usingProductionNative { nativePoseCache = nil } }
+        return ["trajectory_audit_scope": spec.renderer == "emitter" ? "parabolic-v5-soft-edge-excludes-native-birth-drift-and-tilt" : "individual-particles",
                 "textures": details, "texture_bytes": textures.reduce(0) { $0 + $1.bytesPerRow * $1.height },
                 "native_pose_texture_count": poses.count,
                 "native_pose_texture_bytes": poses.reduce(0) { $0 + $1.bytesPerRow * $1.height },
@@ -453,15 +459,13 @@ private struct StudyTrack {
     let times: [Double]
     let positions: [CGPoint]
     let opacities: [Double]
+    init(legacy p: LegacyConfettiParticle) {
+        self.init(duration: p.lifetime, samples: 48, adaptive: false, anchors: [],
+                  position: { let xy = p.position(at: $0); return CGPoint(x: xy.x, y: xy.y) }, opacity: { p.opacity(at: $0) })
+    }
     init(particle p: ConfettiParticle, spec: StudyScenario) {
-        let legacy = spec.renderer == "paper", flight = StudyFlight(p)
-        self.init(duration: legacy ? p.lifetime : StudyFlight.duration(p), samples: spec.samples, adaptive: spec.sampling == "adaptive",
-                  anchors: legacy ? [0, min(0.025, p.launchDuration), p.launchDuration,
-                                     p.launchDuration + p.fallDuration * p.fadeOutStart, p.lifetime] : StudyFlight.anchors(p),
-                  position: { t in
-                      if legacy { let xy = p.position(at: t); return CGPoint(x: xy.x, y: xy.y) }
-                      return flight.position(at: t)
-                  }, opacity: { legacy ? p.opacity(at: $0) : flight.opacity(at: $0) })
+        self.init(duration: p.lifetime, samples: spec.samples, adaptive: spec.sampling == "adaptive",
+                  anchors: StudyFlight.anchors(p), position: { StudyFlight.position(p, at: $0) }, opacity: { p.opacity(at: $0) })
     }
     init(cohort: NativeFlightGroup) {
         self.init(duration: cohort.duration, samples: 48, adaptive: true, anchors: cohort.anchors,

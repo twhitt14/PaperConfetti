@@ -38,22 +38,35 @@ final class ConfettiPhysicsTests: XCTestCase {
         XCTAssertEqual(particle.position(at: 0.5).y, expected.y)
         XCTAssertEqual(particle.y, 500)
     }
-    func testCachedTimingCurvesMatchDirectEvaluationWithinASmallFractionOfAPoint() {
+    func testParabolicPathHasNoApexHoldAndContinuousPosition() {
         let particles = ConfettiBurst(cannons: [.init(x: 100, y: 500)], seed: 42).particles(paletteCount: 3)
-        for particle in particles {
-            for step in 0...300 {
-                let age = Double(step) / 300 * particle.lifetime
-                let launch = ConfettiParticle.bezier(
-                    age / particle.launchDuration, x1: 0.1, y1: 0.8, x2: 0, y2: 1)
-                let rain = ConfettiParticle.bezier(
-                    (age - particle.launchDuration) / particle.fallDuration, x1: 0.12, y1: 0, x2: 0.39, y2: 0)
-                let flutter =
-                    sin(age * 7 + particle.phase) * 5 * sin(min(1, max(0, age / particle.lifetime)) * .pi)
-                let actual = particle.position(at: age)
-                XCTAssertEqual(actual.x, particle.x + particle.dx * launch + flutter, accuracy: 0.05)
-                XCTAssertEqual(
-                    actual.y, particle.y + particle.dy * launch + particle.fall * rain, accuracy: 0.05)
-            }
+        for p in particles {
+            let apex = p.position(at: p.launchDuration).y
+            XCTAssertEqual(apex, p.y + p.dy, accuracy: 1e-9)
+            XCTAssertGreaterThan(p.position(at: p.launchDuration - 0.01).y, apex)
+            XCTAssertGreaterThan(p.position(at: p.launchDuration + 0.01).y, apex)
+            XCTAssertEqual(p.position(at: p.launchDuration - 0.0001).y,
+                           p.position(at: p.launchDuration + 0.0001).y, accuracy: 0.0001)
+            let t = p.launchDuration * 0.5
+            XCTAssertEqual(p.position(at: t).y, p.y + p.dy * 0.75, accuracy: 1e-9)
+            XCTAssertEqual(p.position(at: p.launchDuration + p.fallDuration * 0.5).y,
+                           apex + p.fall * 0.25, accuracy: 1e-9)
+        }
+    }
+    func testSoftBlastTailTapersAndAppearanceDefaultsTo3D() {
+        var distances = [Double]()
+        for seed in 1...20 {
+            let b = ConfettiBurst(cannons: [.init(x: 0, y: 0, count: 5760)], seed: UInt64(seed))
+            XCTAssertEqual(b.appearance, .threeDimensional)
+            distances += b.particles(paletteCount: 3).map { hypot($0.dx, $0.dy) / b.radius }
+        }
+        XCTAssertEqual(distances.reduce(0,+) / Double(distances.count), 0.783, accuracy: 0.015)
+        let beyond = Double(distances.filter { $0 > 1 }.count) / Double(distances.count)
+        XCTAssertTrue((0.1...0.3).contains(beyond))
+        var previous = Int.max
+        for start in stride(from: 1.0, to: 1.6, by: 0.1) {
+            let n = distances.filter { $0 >= start && $0 < start + 0.1 }.count
+            XCTAssertLessThan(n, previous); previous = n
         }
     }
     func testEveryRequestedSilhouetteIsPresentAndShapeSpeedsMatchAcrossCannons() {
@@ -68,16 +81,9 @@ final class ConfettiPhysicsTests: XCTestCase {
         for shape in ConfettiShape.festive {
             let matching = particles.filter { $0.shape == shape }
             XCTAssertEqual(Set(matching.map(\.fallSpeed)).count, 1)
-            XCTAssertEqual(Set(matching.map(\.fallDuration)).count, 1)
-            let first = matching[0]
-            // The descent displacement matches at the same age after launch,
-            // even though origins, launch distances and delays differ.
-            let descent = first.position(at: first.launchDuration + 0.9).y - first.y - first.dy
-            for particle in matching {
-                XCTAssertEqual(
-                    particle.position(at: particle.launchDuration + 0.9).y - particle.y - particle.dy,
-                    descent, accuracy: 0.001)
-            }
+            XCTAssertGreaterThan(Set(matching.map(\.fallDuration)).count, 1)
+            let base = (burst.fall + burst.radius) / (200 * matching[0].fallSpeed)
+            XCTAssertTrue(matching.allSatisfy { (0.8...1.2).contains($0.fallDuration / base) })
         }
         XCTAssertGreaterThan(Set(particles.map(\.fallSpeed)).count, 10)
         var next = burst
@@ -108,7 +114,7 @@ final class ConfettiPhysicsTests: XCTestCase {
         XCTAssertTrue(
             ConfettiBurst(cannons: [.init(x: 0, y: 0, count: -1)]).particles(paletteCount: 3).isEmpty)
         let huge = ConfettiBurst(cannons: Array(repeating: .init(x: 0, y: 0, count: 10_000), count: 100))
-        XCTAssertEqual(huge.particles(paletteCount: 3).count, 2_000)
+        XCTAssertEqual(huge.particles(paletteCount: 3).count, 6_000)
     }
     func testExtremeFiniteAnglesCannotOverflowAndInvalidMotionEmitsNothing() {
         let particles = ConfettiBurst(cannons: [

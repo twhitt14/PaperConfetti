@@ -4,8 +4,9 @@ Add a playful, touch-transparent celebration to SwiftUI or UIKit.
 
 ## Overview
 
-PaperConfetti draws 13 paper silhouettes with Core Animation. Each shape receives
-one random descent speed per burst, while pieces rotate and tumble independently.
+PaperConfetti draws 13 paper silhouettes with native Core Animation particles.
+3D tumble is the default; use `ConfettiConfiguration(appearance: .flat)` for flat
+spinning paper. Each shape has a base fall speed, with independent timing per piece.
 No per-frame SwiftUI state updates or third-party runtime dependencies are needed.
 
 ```swift
@@ -38,6 +39,7 @@ The overlay does not consume touches or become an accessibility element.
 - ``ConfettiOverlay``
 
 ### Customizing the paper and flight
+- ``ConfettiAppearance``
 - ``ConfettiShape``
 - ``ConfettiBurst``
 - ``ConfettiEmitter``

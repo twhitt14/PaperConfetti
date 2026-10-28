@@ -1,5 +1,48 @@
 # Validation and release review
 
+## Native renderer 0.2.0 preflight — October 28, 2026
+
+The package now uses native particles by default, with flat/3D appearances. Local
+validation on Xcode 27.2 RC (27B48), Swift 6.4.2 and the dedicated iOS 27.2 simulator:
+
+- Nine macOS physics tests; sixteen iOS package/renderer tests.
+- Three example UI tests, including both appearances, real touch-through scrolling,
+  navigation, Reduce Motion, cancellation and repeated pops.
+- macOS/iOS Release builds and DocC passed. The example screenshot was recaptured
+  from the running app and visually reviewed with its new 3D/Flat selector.
+- Ten numerical benchmark tests and 33 Python runner/parser tests passed.
+- The renderer-study simulator smoke suite completed its native/legacy cases and
+  all interaction checks, including the three production pixel regressions.
+- On the connected iPhone 18 Pro Max, iOS 27.0.1, all three production-native
+  pixel regressions passed: six flat/3D cannon replays, all 5,760 occupied grid
+  positions, and a negative control reproducing the old expired birth window.
+  The grid edits diagnostic positions/size through public layer APIs; shipping
+  cell creation, clock, and cancellation code are exercised directly.
+- A later simulator repeat intermittently missed the last moving column. Five
+  repeated runs then passed all 30 cannon replays. The diagnostic now holds
+  position/opacity and lengthens visibility so slow screenshot transfers cannot
+  miss falling particles; production birth timing is unchanged. Failure captures
+  are retained. The revised original profiling smoke passed all 12 UI tests,
+  including all 5,760 slots and the old-clock negative control. Evidence:
+  `.artifacts/profile-20261028T193958Z-95c1d5/`. The optional physical repeat of
+  this diagnostic-only adjustment stopped when the phone locked; the production
+  renderer itself is unchanged from the successful physical run above.
+
+This physical evidence establishes emission correctness on the tested device,
+not a general FPS/energy or all-device capacity guarantee. The historical 0.1 CPU
+comparison is labeled accordingly; no new performance percentage is claimed.
+Source has no runtime dependencies, network, analytics, private behaviors, test
+launch arguments or project signing identity. SpriteKit was removed from active
+code and scenarios. The original MIT attribution remains bundled. UIKit API names
+and existing `pop()` calls remain source-compatible; seeded trajectories intentionally
+change to the approved parabolic/soft-edge model in this minor release.
+
+Generated local evidence: `.artifacts/validation-20261028T192425Z/`,
+`.artifacts/release-0.2-core.log`, `.artifacts/release-0.2-motion.log`, and
+`.artifacts/Release02DeviceEmission.xcresult`. Main/tag CI and an exact-tag consumer
+are separately required by [PUBLISHING.md](PUBLISHING.md); their final receipts
+belong in the [0.2.0 release](https://github.com/twhitt14/PaperConfetti/releases/tag/0.2.0).
+
 ## Hosted release preflight — October 26, 2026
 
 [GitHub Actions run 40281541365](https://github.com/twhitt14/PaperConfetti/actions/runs/40281541365)

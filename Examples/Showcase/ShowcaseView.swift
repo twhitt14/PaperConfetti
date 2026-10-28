@@ -5,6 +5,7 @@ import UIKit
 struct ShowcaseView: View {
     @StateObject private var confetti = ConfettiController()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var appearance = ConfettiAppearance.threeDimensional
     @State private var palette = Palette.party
     @State private var selected = Set(ConfettiShape.festive)
     @State private var count = 180.0
@@ -34,7 +35,7 @@ struct ShowcaseView: View {
                             Text("No timers. No counters. Just pop.")
                                 .font(.headline).foregroundStyle(accent).padding(.top, 8)
                             Text(
-                                "Core Animation handles the flight. Matching shapes share a fall speed; each new pop feels a little different."
+                                "Native particles handle the flight. Every piece has its own rhythm, with softer edges and a playful tumble."
                             )
                             .font(.subheadline).foregroundStyle(.secondary)
                         }
@@ -146,6 +147,10 @@ struct ShowcaseView: View {
     private var controls: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Make it yours").font(.title2.bold())
+            Picker("Appearance", selection: $appearance) {
+                Text("3D tumble").tag(ConfettiAppearance.threeDimensional)
+                Text("Flat").tag(ConfettiAppearance.flat)
+            }.pickerStyle(.segmented).accessibilityIdentifier("appearance")
             Picker("Palette", selection: $palette) {
                 ForEach(Palette.allCases) { value in Text(value.rawValue).tag(value) }
             }.pickerStyle(.segmented).accessibilityIdentifier("palette")
@@ -156,7 +161,7 @@ struct ShowcaseView: View {
             }.accessibilityHidden(true)
             DisclosureGroup("Tune the pop") {
                 VStack(spacing: 16) {
-                    slider("Pieces", value: $count, range: 40...400, step: 20)
+                    slider("Pieces", value: $count, range: 40...5760, step: 20)
                     slider("Size", value: $size, range: 5...18, step: 1)
                     slider("Spread", value: $spread, range: 30...140, step: 5)
                     Toggle("Vary speed by shape", isOn: $variedSpeeds)
@@ -246,7 +251,7 @@ struct ShowcaseView: View {
             seed: ProcessInfo.processInfo.arguments.contains("--capture-pop")
                 ? 42 : .random(in: 1...UInt64.max),
             radius: min(320, Double(bounds.height) * 0.42), fall: fall, size: size,
-            shapes: shapes, fallSpeedRange: speeds)
+            shapes: shapes, fallSpeedRange: speeds, appearance: appearance)
         if reduceMotion || reduceMotionDemo {
             confetti.cancel()
         } else {

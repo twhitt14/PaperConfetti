@@ -9,6 +9,7 @@
         public var shapes: [ConfettiShape]
         public var count: Int
         public var radius, fall, size, angle, spread: Double
+        public var appearance: ConfettiAppearance
         public var motion: ConfettiMotion
         public var fallSpeedRange: ClosedRange<Double>
 
@@ -17,7 +18,8 @@
             shapes: [ConfettiShape] = ConfettiShape.festive,
             count: Int = 80, radius: Double = 160, fall: Double = 360,
             size: Double = 10, angle: Double = 90, spread: Double = 70,
-            fallSpeedRange: ClosedRange<Double> = 0.75...1.35, motion: ConfettiMotion = .init()
+            fallSpeedRange: ClosedRange<Double> = 0.75...1.35, motion: ConfettiMotion = .init(),
+            appearance: ConfettiAppearance = .threeDimensional
         ) {
             self.colors = colors
             self.shapes = shapes
@@ -28,6 +30,7 @@
             self.angle = angle
             self.spread = spread
             self.fallSpeedRange = fallSpeedRange
+            self.appearance = appearance
             self.motion = motion
         }
     }
@@ -64,11 +67,12 @@
                                     angle: configuration.angle, spread: configuration.spread)
                             ], radius: configuration.radius,
                             fall: configuration.fall, size: configuration.size, shapes: configuration.shapes,
-                            fallSpeedRange: configuration.fallSpeedRange, motion: configuration.motion)
+                            fallSpeedRange: configuration.fallSpeedRange, motion: configuration.motion,
+                            appearance: configuration.appearance)
                     }, colors: configuration.colors.prefix(16).map(UIColor.init)))
         }
 
-        /// Full control: independently placed/delayed cannons, exact budget, palette,
+        /// Full control: independently placed/delayed cannons, requested budget, palette,
         /// shape selection, dimensions, flight distances, speed range and optional seed.
         @discardableResult
         public func pop(_ burst: ConfettiBurst, colors: [Color] = [.cyan, .pink, .yellow]) -> Bool {

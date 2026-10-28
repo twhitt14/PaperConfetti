@@ -1,7 +1,7 @@
 // swift-tools-version: 5.9
 import PackageDescription
 
-// Pure planning tests only; the UIKit/SpriteKit experiments remain in the Xcode app.
+// Pure planning tests only; the UIKit renderer experiments remain in the Xcode app.
 let package = Package(
     name: "ConfettiStudyMotion",
     platforms: [.macOS(.v13), .iOS(.v16)],

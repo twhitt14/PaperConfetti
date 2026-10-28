@@ -27,8 +27,9 @@ credentials or an app signing team.
 - Keep the controller free of per-frame published state. A new pop replaces the
   active burst; backgrounding/removal clears work rather than queuing surprises.
 - Preserve transparent hit testing, accessibility hiding and Reduce Motion.
-- Keep seeded physics deterministic and independent of frame rate. Identical
-  shapes share descent speeds across all cannons in a burst.
+- Keep seeded physics deterministic and independent of frame rate. Shapes share
+  a base descent speed; each piece has independent timing. Preserve soft blast edges
+  and the staged native launch clock, including cancel-before-start safety.
 - Keep the package independent of Wordie or any sibling repository. No account,
   Firebase, analytics, network or additional runtime dependency belongs here.
 - Preserve attribution and both MIT notices. Add focused regressions for changed

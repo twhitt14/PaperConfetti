@@ -44,6 +44,20 @@ final class PaperConfettiExampleUITests: XCTestCase {
         app.buttons["tap-through"].tap()
         XCTAssertEqual(app.staticTexts["input-proof"].label, "Tap received · overlay is idle")
     }
+    func testBothAppearancesKeepControlsInteractive() {
+        let app = XCUIApplication(); app.launchArguments = ["--ui-testing"]; app.launch()
+        let flat = app.segmentedControls["appearance"].buttons["Flat"]
+        scrollIntoView(flat, in: app); flat.tap()
+        app.buttons["pop"].tap()
+        scrollIntoView(app.buttons["tap-through"], in: app); app.buttons["tap-through"].tap()
+        XCTAssertEqual(app.staticTexts["input-proof"].label, "Tap received while confetti is active")
+        let tilted = app.segmentedControls["appearance"].buttons["3D tumble"]
+        scrollIntoView(tilted, in: app); tilted.tap()
+        app.buttons["cannons"].tap()
+        app.buttons["stop"].tap()
+        scrollIntoView(app.buttons["tap-through"], in: app); app.buttons["tap-through"].tap()
+        XCTAssertEqual(app.staticTexts["input-proof"].label, "Tap received · overlay is idle")
+    }
     // A full swipe can leave a short control behind the translucent navigation bar.
     // Keep the actual control wholly inside the unobscured part of the scroll view.
     private func scrollIntoView(_ element: XCUIElement, in app: XCUIApplication) {

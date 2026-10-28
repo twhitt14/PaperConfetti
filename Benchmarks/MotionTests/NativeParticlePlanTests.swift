@@ -68,11 +68,11 @@ final class NativeParticlePlanTests: XCTestCase {
         XCTAssertGreaterThan(Set(original.map(\.launchDuration)).count, 700)
         for sameShape in Dictionary(grouping: original, by: \.shape).values {
             XCTAssertEqual(Set(sameShape.map(StudyFlight.fallDuration)).count, sameShape.count)
-            XCTAssertTrue(sameShape.contains { StudyFlight.fallDuration($0) < $0.fallDuration })
-            XCTAssertTrue(sameShape.contains { StudyFlight.fallDuration($0) > $0.fallDuration })
+            XCTAssertTrue(sameShape.contains { StudyFlight.fallDuration($0) < 450 / (200 * $0.fallSpeed) })
+            XCTAssertTrue(sameShape.contains { StudyFlight.fallDuration($0) > 450 / (200 * $0.fallSpeed) })
         }
         XCTAssertTrue(original.allSatisfy {
-            (0.8...1.2).contains(StudyFlight.fallDuration($0) / $0.fallDuration)
+            (0.8...1.2).contains(StudyFlight.fallDuration($0) / (450 / (200 * $0.fallSpeed)))
         })
     }
     func testEmptyAndSingleInputs() {

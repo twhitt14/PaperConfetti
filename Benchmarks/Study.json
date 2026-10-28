@@ -14,7 +14,6 @@
       "uniformSpeed": false,
       "prewarm": true,
       "opaqueProxy": false,
-      "atlas": false,
       "id": "control",
       "suites": [
         "renderers",
@@ -37,7 +36,6 @@
       "uniformSpeed": false,
       "prewarm": true,
       "opaqueProxy": false,
-      "atlas": false,
       "id": "paper-180",
       "suites": [
         "renderers"
@@ -59,7 +57,6 @@
       "uniformSpeed": false,
       "prewarm": true,
       "opaqueProxy": false,
-      "atlas": false,
       "id": "layers-180",
       "suites": [
         "renderers"
@@ -81,7 +78,6 @@
       "uniformSpeed": false,
       "prewarm": true,
       "opaqueProxy": false,
-      "atlas": false,
       "id": "emitter-180",
       "suites": [
         "renderers"
@@ -103,7 +99,6 @@
       "uniformSpeed": false,
       "prewarm": true,
       "opaqueProxy": false,
-      "atlas": false,
       "id": "emitter-3d-180",
       "suites": [
         "renderers"
@@ -112,50 +107,6 @@
       "paddedTexture": false,
       "trilinear": false,
       "native3D": true
-    },
-    {
-      "renderer": "sprite",
-      "count": 180,
-      "size": 10,
-      "shapes": "festive",
-      "textureScale": 0,
-      "samples": 48,
-      "tumble": true,
-      "flutter": true,
-      "hostMotion": true,
-      "uniformSpeed": false,
-      "prewarm": true,
-      "opaqueProxy": false,
-      "atlas": false,
-      "id": "sprite-180",
-      "suites": [
-        "renderers"
-      ],
-      "sampling": "uniform",
-      "paddedTexture": false,
-      "trilinear": false
-    },
-    {
-      "renderer": "sprite",
-      "count": 180,
-      "size": 10,
-      "shapes": "festive",
-      "textureScale": 0,
-      "samples": 48,
-      "tumble": true,
-      "flutter": true,
-      "hostMotion": true,
-      "uniformSpeed": false,
-      "prewarm": true,
-      "opaqueProxy": false,
-      "atlas": true,
-      "id": "sprite-atlas-180",
-      "suites": [
-        "renderers"
-      ],
-      "sampling": "uniform",
-      "paddedTexture": false,
-      "trilinear": false
     },
     {
       "renderer": "paper",
@@ -170,7 +121,6 @@
       "uniformSpeed": false,
       "prewarm": true,
       "opaqueProxy": false,
-      "atlas": false,
       "id": "paper-720",
       "suites": [
         "renderers"
@@ -192,7 +142,6 @@
       "uniformSpeed": false,
       "prewarm": true,
       "opaqueProxy": false,
-      "atlas": false,
       "id": "layers-720",
       "suites": [
         "renderers",
@@ -216,7 +165,6 @@
       "uniformSpeed": false,
       "prewarm": true,
       "opaqueProxy": false,
-      "atlas": false,
       "id": "emitter-720",
       "suites": [
         "renderers"
@@ -238,7 +186,6 @@
       "uniformSpeed": false,
       "prewarm": true,
       "opaqueProxy": false,
-      "atlas": false,
       "id": "emitter-3d-720",
       "suites": [
         "renderers"
@@ -247,50 +194,6 @@
       "paddedTexture": false,
       "trilinear": false,
       "native3D": true
-    },
-    {
-      "renderer": "sprite",
-      "count": 720,
-      "size": 10,
-      "shapes": "festive",
-      "textureScale": 0,
-      "samples": 48,
-      "tumble": true,
-      "flutter": true,
-      "hostMotion": true,
-      "uniformSpeed": false,
-      "prewarm": true,
-      "opaqueProxy": false,
-      "atlas": false,
-      "id": "sprite-720",
-      "suites": [
-        "renderers"
-      ],
-      "sampling": "uniform",
-      "paddedTexture": false,
-      "trilinear": false
-    },
-    {
-      "renderer": "sprite",
-      "count": 720,
-      "size": 10,
-      "shapes": "festive",
-      "textureScale": 0,
-      "samples": 48,
-      "tumble": true,
-      "flutter": true,
-      "hostMotion": true,
-      "uniformSpeed": false,
-      "prewarm": true,
-      "opaqueProxy": false,
-      "atlas": true,
-      "id": "sprite-atlas-720",
-      "suites": [
-        "renderers"
-      ],
-      "sampling": "uniform",
-      "paddedTexture": false,
-      "trilinear": false
     },
     {
       "renderer": "layers",
@@ -305,7 +208,6 @@
       "uniformSpeed": false,
       "prewarm": true,
       "opaqueProxy": false,
-      "atlas": false,
       "id": "size-7",
       "suites": [
         "factors"
@@ -327,7 +229,6 @@
       "uniformSpeed": false,
       "prewarm": true,
       "opaqueProxy": false,
-      "atlas": false,
       "id": "texture-1x",
       "suites": [
         "factors"
@@ -349,7 +250,6 @@
       "uniformSpeed": false,
       "prewarm": true,
       "opaqueProxy": false,
-      "atlas": false,
       "id": "texture-2x",
       "suites": [
         "factors"
@@ -371,7 +271,6 @@
       "uniformSpeed": false,
       "prewarm": true,
       "opaqueProxy": false,
-      "atlas": false,
       "id": "samples-24",
       "suites": [
         "factors"
@@ -393,7 +292,6 @@
       "uniformSpeed": false,
       "prewarm": true,
       "opaqueProxy": false,
-      "atlas": false,
       "id": "samples-12",
       "suites": [
         "factors"
@@ -415,7 +313,6 @@
       "uniformSpeed": false,
       "prewarm": true,
       "opaqueProxy": false,
-      "atlas": false,
       "id": "no-tumble",
       "suites": [
         "factors"
@@ -437,7 +334,6 @@
       "uniformSpeed": false,
       "prewarm": true,
       "opaqueProxy": false,
-      "atlas": false,
       "id": "no-flutter",
       "suites": [
         "factors"
@@ -459,7 +355,6 @@
       "uniformSpeed": false,
       "prewarm": true,
       "opaqueProxy": false,
-      "atlas": false,
       "id": "still-host",
       "suites": [
         "factors"
@@ -481,7 +376,6 @@
       "uniformSpeed": true,
       "prewarm": true,
       "opaqueProxy": false,
-      "atlas": false,
       "id": "uniform-speed",
       "suites": [
         "factors"
@@ -503,7 +397,6 @@
       "uniformSpeed": true,
       "prewarm": true,
       "opaqueProxy": false,
-      "atlas": false,
       "id": "classic-matched",
       "suites": [
         "factors"
@@ -525,7 +418,6 @@
       "uniformSpeed": false,
       "prewarm": false,
       "opaqueProxy": false,
-      "atlas": false,
       "id": "cold-textures",
       "suites": [
         "factors"
@@ -547,7 +439,6 @@
       "uniformSpeed": false,
       "prewarm": true,
       "opaqueProxy": true,
-      "atlas": false,
       "id": "opaque-proxy",
       "suites": [
         "factors"
@@ -569,7 +460,6 @@
       "uniformSpeed": false,
       "prewarm": true,
       "opaqueProxy": false,
-      "atlas": false,
       "id": "shape-circle",
       "suites": [
         "shapes"
@@ -591,7 +481,6 @@
       "uniformSpeed": false,
       "prewarm": true,
       "opaqueProxy": false,
-      "atlas": false,
       "id": "shape-triangle",
       "suites": [
         "shapes"
@@ -613,7 +502,6 @@
       "uniformSpeed": false,
       "prewarm": true,
       "opaqueProxy": false,
-      "atlas": false,
       "id": "shape-strip",
       "suites": [
         "shapes"
@@ -635,7 +523,6 @@
       "uniformSpeed": false,
       "prewarm": true,
       "opaqueProxy": false,
-      "atlas": false,
       "id": "shape-star",
       "suites": [
         "shapes"
@@ -657,7 +544,6 @@
       "uniformSpeed": false,
       "prewarm": true,
       "opaqueProxy": false,
-      "atlas": false,
       "id": "shape-outlinedStar",
       "suites": [
         "shapes"
@@ -679,7 +565,6 @@
       "uniformSpeed": false,
       "prewarm": true,
       "opaqueProxy": false,
-      "atlas": false,
       "id": "shape-sparkle",
       "suites": [
         "shapes"
@@ -701,7 +586,6 @@
       "uniformSpeed": false,
       "prewarm": true,
       "opaqueProxy": false,
-      "atlas": false,
       "id": "shape-asterisk",
       "suites": [
         "shapes"
@@ -723,7 +607,6 @@
       "uniformSpeed": false,
       "prewarm": true,
       "opaqueProxy": false,
-      "atlas": false,
       "id": "shape-wave",
       "suites": [
         "shapes"
@@ -745,7 +628,6 @@
       "uniformSpeed": false,
       "prewarm": true,
       "opaqueProxy": false,
-      "atlas": false,
       "id": "shape-squiggle",
       "suites": [
         "shapes"
@@ -767,7 +649,6 @@
       "uniformSpeed": false,
       "prewarm": true,
       "opaqueProxy": false,
-      "atlas": false,
       "id": "shape-loop",
       "suites": [
         "shapes"
@@ -789,7 +670,6 @@
       "uniformSpeed": false,
       "prewarm": true,
       "opaqueProxy": false,
-      "atlas": false,
       "id": "shape-doubleLoop",
       "suites": [
         "shapes"
@@ -811,7 +691,6 @@
       "uniformSpeed": false,
       "prewarm": true,
       "opaqueProxy": false,
-      "atlas": false,
       "id": "shape-ring",
       "suites": [
         "shapes"
@@ -833,7 +712,6 @@
       "uniformSpeed": false,
       "prewarm": true,
       "opaqueProxy": false,
-      "atlas": false,
       "id": "shape-longTriangle",
       "suites": [
         "shapes"
@@ -855,7 +733,6 @@
       "uniformSpeed": false,
       "prewarm": true,
       "opaqueProxy": false,
-      "atlas": false,
       "id": "shape-curvedTriangle",
       "suites": [
         "shapes"
@@ -877,7 +754,6 @@
       "uniformSpeed": false,
       "prewarm": true,
       "opaqueProxy": false,
-      "atlas": false,
       "id": "shape-diamond",
       "suites": [
         "shapes"
@@ -899,7 +775,6 @@
       "uniformSpeed": false,
       "prewarm": true,
       "opaqueProxy": false,
-      "atlas": false,
       "id": "shape-parallelogram",
       "suites": [
         "shapes"
@@ -921,7 +796,6 @@
       "uniformSpeed": false,
       "prewarm": true,
       "opaqueProxy": false,
-      "atlas": false,
       "id": "adaptive-keyframes",
       "suites": [
         "factors"
@@ -943,7 +817,6 @@
       "uniformSpeed": false,
       "prewarm": true,
       "opaqueProxy": false,
-      "atlas": false,
       "id": "texture-4x",
       "suites": [
         "factors"
@@ -965,7 +838,6 @@
       "uniformSpeed": false,
       "prewarm": true,
       "opaqueProxy": false,
-      "atlas": false,
       "id": "padded-textures",
       "suites": [
         "factors"
@@ -987,7 +859,6 @@
       "uniformSpeed": false,
       "prewarm": true,
       "opaqueProxy": false,
-      "atlas": false,
       "id": "trilinear-textures",
       "suites": [
         "factors"
@@ -995,98 +866,6 @@
       "sampling": "uniform",
       "paddedTexture": true,
       "trilinear": true
-    },
-    {
-      "renderer": "sprite",
-      "count": 180,
-      "size": 10,
-      "shapes": "festive",
-      "textureScale": 0,
-      "samples": 48,
-      "tumble": true,
-      "flutter": true,
-      "hostMotion": true,
-      "uniformSpeed": false,
-      "prewarm": true,
-      "opaqueProxy": false,
-      "atlas": false,
-      "id": "sprite-3d-180",
-      "suites": [
-        "renderers"
-      ],
-      "sampling": "uniform",
-      "paddedTexture": false,
-      "trilinear": false,
-      "native3D": true
-    },
-    {
-      "renderer": "sprite",
-      "count": 180,
-      "size": 10,
-      "shapes": "festive",
-      "textureScale": 0,
-      "samples": 48,
-      "tumble": true,
-      "flutter": true,
-      "hostMotion": true,
-      "uniformSpeed": false,
-      "prewarm": true,
-      "opaqueProxy": false,
-      "atlas": true,
-      "id": "sprite-atlas-3d-180",
-      "suites": [
-        "renderers"
-      ],
-      "sampling": "uniform",
-      "paddedTexture": false,
-      "trilinear": false,
-      "native3D": true
-    },
-    {
-      "renderer": "sprite",
-      "count": 720,
-      "size": 10,
-      "shapes": "festive",
-      "textureScale": 0,
-      "samples": 48,
-      "tumble": true,
-      "flutter": true,
-      "hostMotion": true,
-      "uniformSpeed": false,
-      "prewarm": true,
-      "opaqueProxy": false,
-      "atlas": false,
-      "id": "sprite-3d-720",
-      "suites": [
-        "renderers"
-      ],
-      "sampling": "uniform",
-      "paddedTexture": false,
-      "trilinear": false,
-      "native3D": true
-    },
-    {
-      "renderer": "sprite",
-      "count": 720,
-      "size": 10,
-      "shapes": "festive",
-      "textureScale": 0,
-      "samples": 48,
-      "tumble": true,
-      "flutter": true,
-      "hostMotion": true,
-      "uniformSpeed": false,
-      "prewarm": true,
-      "opaqueProxy": false,
-      "atlas": true,
-      "id": "sprite-atlas-3d-720",
-      "suites": [
-        "renderers"
-      ],
-      "sampling": "uniform",
-      "paddedTexture": false,
-      "trilinear": false,
-      "native3D": true
     },
     {
       "renderer": "emitter",
@@ -1101,7 +880,6 @@
       "uniformSpeed": false,
       "prewarm": true,
       "opaqueProxy": false,
-      "atlas": false,
       "id": "emitter-shared-720",
       "suites": [
         "diagnostics"
@@ -1125,7 +903,6 @@
       "uniformSpeed": false,
       "prewarm": true,
       "opaqueProxy": false,
-      "atlas": false,
       "id": "stress-emitter-720",
       "suites": [
         "stress"
@@ -1147,98 +924,7 @@
       "uniformSpeed": false,
       "prewarm": true,
       "opaqueProxy": false,
-      "atlas": false,
       "id": "stress-emitter-3d-720",
-      "suites": [
-        "stress"
-      ],
-      "sampling": "uniform",
-      "paddedTexture": false,
-      "trilinear": false,
-      "native3D": true
-    },
-    {
-      "renderer": "sprite",
-      "count": 720,
-      "size": 10,
-      "shapes": "festive",
-      "textureScale": 0,
-      "samples": 48,
-      "tumble": true,
-      "flutter": true,
-      "hostMotion": true,
-      "uniformSpeed": false,
-      "prewarm": true,
-      "opaqueProxy": false,
-      "atlas": false,
-      "id": "stress-sprite-720",
-      "suites": [
-        "stress"
-      ],
-      "sampling": "uniform",
-      "paddedTexture": false,
-      "trilinear": false
-    },
-    {
-      "renderer": "sprite",
-      "count": 720,
-      "size": 10,
-      "shapes": "festive",
-      "textureScale": 0,
-      "samples": 48,
-      "tumble": true,
-      "flutter": true,
-      "hostMotion": true,
-      "uniformSpeed": false,
-      "prewarm": true,
-      "opaqueProxy": false,
-      "atlas": false,
-      "id": "stress-sprite-3d-720",
-      "suites": [
-        "stress"
-      ],
-      "sampling": "uniform",
-      "paddedTexture": false,
-      "trilinear": false,
-      "native3D": true
-    },
-    {
-      "renderer": "sprite",
-      "count": 720,
-      "size": 10,
-      "shapes": "festive",
-      "textureScale": 0,
-      "samples": 48,
-      "tumble": true,
-      "flutter": true,
-      "hostMotion": true,
-      "uniformSpeed": false,
-      "prewarm": true,
-      "opaqueProxy": false,
-      "atlas": true,
-      "id": "stress-sprite-atlas-720",
-      "suites": [
-        "stress"
-      ],
-      "sampling": "uniform",
-      "paddedTexture": false,
-      "trilinear": false
-    },
-    {
-      "renderer": "sprite",
-      "count": 720,
-      "size": 10,
-      "shapes": "festive",
-      "textureScale": 0,
-      "samples": 48,
-      "tumble": true,
-      "flutter": true,
-      "hostMotion": true,
-      "uniformSpeed": false,
-      "prewarm": true,
-      "opaqueProxy": false,
-      "atlas": true,
-      "id": "stress-sprite-atlas-3d-720",
       "suites": [
         "stress"
       ],
@@ -1260,7 +946,6 @@
       "uniformSpeed": false,
       "prewarm": true,
       "opaqueProxy": false,
-      "atlas": false,
       "id": "stress-emitter-1440",
       "suites": [
         "stress"
@@ -1282,98 +967,7 @@
       "uniformSpeed": false,
       "prewarm": true,
       "opaqueProxy": false,
-      "atlas": false,
       "id": "stress-emitter-3d-1440",
-      "suites": [
-        "stress"
-      ],
-      "sampling": "uniform",
-      "paddedTexture": false,
-      "trilinear": false,
-      "native3D": true
-    },
-    {
-      "renderer": "sprite",
-      "count": 1440,
-      "size": 10,
-      "shapes": "festive",
-      "textureScale": 0,
-      "samples": 48,
-      "tumble": true,
-      "flutter": true,
-      "hostMotion": true,
-      "uniformSpeed": false,
-      "prewarm": true,
-      "opaqueProxy": false,
-      "atlas": false,
-      "id": "stress-sprite-1440",
-      "suites": [
-        "stress"
-      ],
-      "sampling": "uniform",
-      "paddedTexture": false,
-      "trilinear": false
-    },
-    {
-      "renderer": "sprite",
-      "count": 1440,
-      "size": 10,
-      "shapes": "festive",
-      "textureScale": 0,
-      "samples": 48,
-      "tumble": true,
-      "flutter": true,
-      "hostMotion": true,
-      "uniformSpeed": false,
-      "prewarm": true,
-      "opaqueProxy": false,
-      "atlas": false,
-      "id": "stress-sprite-3d-1440",
-      "suites": [
-        "stress"
-      ],
-      "sampling": "uniform",
-      "paddedTexture": false,
-      "trilinear": false,
-      "native3D": true
-    },
-    {
-      "renderer": "sprite",
-      "count": 1440,
-      "size": 10,
-      "shapes": "festive",
-      "textureScale": 0,
-      "samples": 48,
-      "tumble": true,
-      "flutter": true,
-      "hostMotion": true,
-      "uniformSpeed": false,
-      "prewarm": true,
-      "opaqueProxy": false,
-      "atlas": true,
-      "id": "stress-sprite-atlas-1440",
-      "suites": [
-        "stress"
-      ],
-      "sampling": "uniform",
-      "paddedTexture": false,
-      "trilinear": false
-    },
-    {
-      "renderer": "sprite",
-      "count": 1440,
-      "size": 10,
-      "shapes": "festive",
-      "textureScale": 0,
-      "samples": 48,
-      "tumble": true,
-      "flutter": true,
-      "hostMotion": true,
-      "uniformSpeed": false,
-      "prewarm": true,
-      "opaqueProxy": false,
-      "atlas": true,
-      "id": "stress-sprite-atlas-3d-1440",
       "suites": [
         "stress"
       ],
@@ -1395,7 +989,6 @@
       "uniformSpeed": false,
       "prewarm": true,
       "opaqueProxy": false,
-      "atlas": false,
       "id": "stress-emitter-2880",
       "suites": [
         "stress"
@@ -1417,98 +1010,7 @@
       "uniformSpeed": false,
       "prewarm": true,
       "opaqueProxy": false,
-      "atlas": false,
       "id": "stress-emitter-3d-2880",
-      "suites": [
-        "stress"
-      ],
-      "sampling": "uniform",
-      "paddedTexture": false,
-      "trilinear": false,
-      "native3D": true
-    },
-    {
-      "renderer": "sprite",
-      "count": 2880,
-      "size": 10,
-      "shapes": "festive",
-      "textureScale": 0,
-      "samples": 48,
-      "tumble": true,
-      "flutter": true,
-      "hostMotion": true,
-      "uniformSpeed": false,
-      "prewarm": true,
-      "opaqueProxy": false,
-      "atlas": false,
-      "id": "stress-sprite-2880",
-      "suites": [
-        "stress"
-      ],
-      "sampling": "uniform",
-      "paddedTexture": false,
-      "trilinear": false
-    },
-    {
-      "renderer": "sprite",
-      "count": 2880,
-      "size": 10,
-      "shapes": "festive",
-      "textureScale": 0,
-      "samples": 48,
-      "tumble": true,
-      "flutter": true,
-      "hostMotion": true,
-      "uniformSpeed": false,
-      "prewarm": true,
-      "opaqueProxy": false,
-      "atlas": false,
-      "id": "stress-sprite-3d-2880",
-      "suites": [
-        "stress"
-      ],
-      "sampling": "uniform",
-      "paddedTexture": false,
-      "trilinear": false,
-      "native3D": true
-    },
-    {
-      "renderer": "sprite",
-      "count": 2880,
-      "size": 10,
-      "shapes": "festive",
-      "textureScale": 0,
-      "samples": 48,
-      "tumble": true,
-      "flutter": true,
-      "hostMotion": true,
-      "uniformSpeed": false,
-      "prewarm": true,
-      "opaqueProxy": false,
-      "atlas": true,
-      "id": "stress-sprite-atlas-2880",
-      "suites": [
-        "stress"
-      ],
-      "sampling": "uniform",
-      "paddedTexture": false,
-      "trilinear": false
-    },
-    {
-      "renderer": "sprite",
-      "count": 2880,
-      "size": 10,
-      "shapes": "festive",
-      "textureScale": 0,
-      "samples": 48,
-      "tumble": true,
-      "flutter": true,
-      "hostMotion": true,
-      "uniformSpeed": false,
-      "prewarm": true,
-      "opaqueProxy": false,
-      "atlas": true,
-      "id": "stress-sprite-atlas-3d-2880",
       "suites": [
         "stress"
       ],
@@ -1530,7 +1032,6 @@
       "uniformSpeed": false,
       "prewarm": true,
       "opaqueProxy": false,
-      "atlas": false,
       "id": "stress-emitter-5760",
       "suites": [
         "stress"
@@ -1552,98 +1053,7 @@
       "uniformSpeed": false,
       "prewarm": true,
       "opaqueProxy": false,
-      "atlas": false,
       "id": "stress-emitter-3d-5760",
-      "suites": [
-        "stress"
-      ],
-      "sampling": "uniform",
-      "paddedTexture": false,
-      "trilinear": false,
-      "native3D": true
-    },
-    {
-      "renderer": "sprite",
-      "count": 5760,
-      "size": 10,
-      "shapes": "festive",
-      "textureScale": 0,
-      "samples": 48,
-      "tumble": true,
-      "flutter": true,
-      "hostMotion": true,
-      "uniformSpeed": false,
-      "prewarm": true,
-      "opaqueProxy": false,
-      "atlas": false,
-      "id": "stress-sprite-5760",
-      "suites": [
-        "stress"
-      ],
-      "sampling": "uniform",
-      "paddedTexture": false,
-      "trilinear": false
-    },
-    {
-      "renderer": "sprite",
-      "count": 5760,
-      "size": 10,
-      "shapes": "festive",
-      "textureScale": 0,
-      "samples": 48,
-      "tumble": true,
-      "flutter": true,
-      "hostMotion": true,
-      "uniformSpeed": false,
-      "prewarm": true,
-      "opaqueProxy": false,
-      "atlas": false,
-      "id": "stress-sprite-3d-5760",
-      "suites": [
-        "stress"
-      ],
-      "sampling": "uniform",
-      "paddedTexture": false,
-      "trilinear": false,
-      "native3D": true
-    },
-    {
-      "renderer": "sprite",
-      "count": 5760,
-      "size": 10,
-      "shapes": "festive",
-      "textureScale": 0,
-      "samples": 48,
-      "tumble": true,
-      "flutter": true,
-      "hostMotion": true,
-      "uniformSpeed": false,
-      "prewarm": true,
-      "opaqueProxy": false,
-      "atlas": true,
-      "id": "stress-sprite-atlas-5760",
-      "suites": [
-        "stress"
-      ],
-      "sampling": "uniform",
-      "paddedTexture": false,
-      "trilinear": false
-    },
-    {
-      "renderer": "sprite",
-      "count": 5760,
-      "size": 10,
-      "shapes": "festive",
-      "textureScale": 0,
-      "samples": 48,
-      "tumble": true,
-      "flutter": true,
-      "hostMotion": true,
-      "uniformSpeed": false,
-      "prewarm": true,
-      "opaqueProxy": false,
-      "atlas": true,
-      "id": "stress-sprite-atlas-3d-5760",
       "suites": [
         "stress"
       ],

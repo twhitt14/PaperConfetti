@@ -4,7 +4,7 @@ A dependency-free iOS 16+ confetti package for SwiftUI and UIKit. Thirteen paper
 shapes, lifelike tumble, and a simple `pop()` method. Core Animation handles the
 flight while your interface keeps responding.
 
-**Version 0.1.0** is the first release. The repository is currently private;
+**Version 0.2.0** uses native particles, with 3D tumble by default and an optional flat appearance. The repository is currently private;
 installation requires GitHub access to `twhitt14/PaperConfetti`. See
 [validation results](VALIDATION.md) and the [release workflow](PUBLISHING.md).
 
@@ -23,7 +23,7 @@ In Xcode → Add Package Dependencies, enter
 product. SwiftPM consumers can use:
 
 ```swift
-.package(url: "https://github.com/twhitt14/PaperConfetti.git", from: "0.1.0")
+.package(url: "https://github.com/twhitt14/PaperConfetti.git", from: "0.2.0")
 ```
 
 Then add `.product(name: "PaperConfetti", package: "paperconfetti")` to your
@@ -77,10 +77,22 @@ and four angular/curved paper cuts. `ConfettiShape.classic` retains the old circ
 triangle and strip. Long shapes retain their aspect ratios. Duplicate entries
 are deduplicated; use an explicit subset to select a style.
 
-One random fall-speed multiplier is drawn **per distinct shape per pop**, shared
-across every cannon/color/size using that shape. A new seed draws new speeds.
-Launch direction, distance, spin, tumble and size still vary by particle. Descent
-starts after launch; matching shapes use the same fall curve and duration.
+Choose the appearance independently of the shapes and colors:
+
+```swift
+confetti.pop(configuration: .init(appearance: .flat))
+confetti.pop(configuration: .init(appearance: .threeDimensional)) // Default
+```
+
+Both appearances use the same native particle renderer. Flat pieces rotate in
+screen space; 3D pieces also tilt as they fall. `ConfettiBurst` accepts the same
+`appearance` parameter for multiple cannons. Existing `pop()` calls need no changes.
+
+Each shape gets a random base fall speed per pop, then each piece gets its own
+rise time and ±20% descent-time variation. Seeded spin, size and starting pose
+keep identical shapes from moving in lockstep. The rise and fall meet smoothly
+at the peak without a pause. Radius is a nominal reach: a tapering distribution
+of outliers softly feathers the blast's outer edge instead of stopping at a wall.
 
 ## Full burst control
 
@@ -101,7 +113,7 @@ confetti.pop(burst, colors: [.cyan, .orange, .gray])
 `pop` twice with that identical burst plays twice. Seeds determine physics, not
 whether an event fires. `ConfettiMotion` controls launch duration, spin/tumble in
 radians per second, size variation, horizontal flutter and when descent fading
-begins. `fallSpeedRange: 1...1` disables shape-speed variation.
+begins. `fallSpeedRange: 1...1` disables shape-speed variation; individual timing still varies.
 
 The lower-level declarative `ConfettiOverlay(burst:colors:)` remains available for
 state-driven hosts. It consumes a value only once; repeating an identical value
@@ -128,16 +140,25 @@ initial mounting, scene changes, cancellation and repeated seeded events.
 
 ## Rendering and bounds
 
-Core Animation owns the flight. There are no particle SwiftUI views, per-frame
-app callbacks, per-particle timers or forever animations. Trajectories are sampled
-once; bounded, shared raster textures cache the vector shapes/palette. Long pieces
-use proportional layer bounds. A single cancellable cleanup releases the layers.
+`CAEmitterLayer` owns playback. There are no particle SwiftUI views, per-frame
+app callbacks, or per-particle timers. Adaptive trajectory samples and shared,
+cached raster poses preserve the fast launch, varied shapes and 3D paper tilt.
+The whole burst is prepared under a paused clock, then started together with
+load-dependent headroom. This prevents early cannons missing their brief emission
+window while a large burst is being submitted. Cancellation invalidates pending
+starts and removes the entire layer tree; natural completion releases it too.
 
-Limits: 32 cannons, 2,000 particles, 16 colors, delays up to 60 seconds; nominal
-size 1–64 points, radius/fall 0–5,000 (positive), fall-speed multipliers 0.25–4.
-Motion controls have finite documented source bounds; invalid input emits nothing.
-These caps prevent runaway input; they are not a promise of hitch-free arbitrary
-2,000-particle effects. The example starts with 180 particles and offers five cannons 0.1 seconds apart.
+Limits: 32 cannons, 6,000 requested particles, 16 colors, delays up to 60 seconds;
+nominal size 1–64 points, radius/fall positive and at most 5,000 points, base
+fall-speed multipliers 0.25–4. Invalid input emits nothing. These are safety bounds,
+not performance recommendations. The example starts with 180 pieces and offers
+up to 5,760 for deliberate stress tests.
+
+Native births are rate-based. `particleLayerCount` reports the requested active
+population, not a live readback from Core Animation. `scheduledStartDelay` records
+preparation plus the scheduled clock-start delay in seconds; it is not a displayed
+frame measurement. Physical pixel tests verified all 5,760 slots and all five
+cannons on the tested iPhone; that is not a universal count/FPS guarantee.
 
 The pure physics model/tests compile on macOS 13+; the renderer is UIKit, not an
 AppKit implementation. No network, analytics or stored identifiers. Original
@@ -146,7 +167,7 @@ ConfettiSwiftUI attribution ships in `THIRD_PARTY_NOTICES.txt` and the resource 
 ## Example and validation
 
 The example includes three palettes, per-shape selection, particle/size/spread
-controls, matching-shape speed variation, a Reduce Motion preview, and touch-through
+controls, flat/3D selection, shape-speed variation, a Reduce Motion preview, and touch-through
 controls beneath the animation. Its dependency is the package in this repository.
 
 ```sh
@@ -176,9 +197,10 @@ package resource. Its outer-weighted launch distribution and timing curves
 informed this independent renderer. All 13 festive silhouettes are original
 vector paths. No runtime dependency on ConfettiSwiftUI is required.
 
-## Initial on-device CPU comparison
+## Historical 0.1.0 on-device CPU comparison
 
-In one iPhone 18 Pro Max session, PaperConfetti used **89–91% less process CPU
+These results describe the **0.1.0 layer renderer**, not the new native default.
+In one iPhone 18 Pro Max session, PaperConfetti 0.1.0 used **89–91% less process CPU
 time** than the historical **ConfettiSwiftUI 1.1.0** renderer in matched classic
 confetti workloads:
 
@@ -197,8 +219,8 @@ and cannon spacing; their randomized trajectories differ.
 
 These are **whole-process CPU measurements**, including the common host UI, from
 one device session at fair thermal state. They do not establish FPS, GPU cost,
-energy savings, or a comparison with newer ConfettiSwiftUI releases. The separate
-**720-particle, 13-shape festive stress case still has reported visible hitches**;
+energy savings, or a comparison with newer ConfettiSwiftUI releases. The old layer renderer
+**had reported visible hitches at 720 festive particles**;
 lower app CPU does not guarantee smooth presentation at that density. The default
 example uses 180 particles. Repeat on representative devices before choosing a
 larger budget.
@@ -212,7 +234,7 @@ to reproduce the comparison.
 
 Trajectories and shared textures are prepared once per pop; Core Animation owns
 playback. Avoid placing the overlay inside moving layout containers and keep
-particle counts appropriate for your screen. The 2,000-particle safety cap is not
+particle counts appropriate for your screen. The 6,000-particle safety cap is not
 a performance recommendation. Simulator timing is not device GPU/FPS or energy
 evidence; profile representative physical devices before adopting larger effects.
 
@@ -220,6 +242,19 @@ evidence; profile representative physical devices before adopting larger effects
 
 Connect and unlock your iPhone, then run `python3 tools/profile.py`. The automated Release suite records animation hitches, CPU and memory, compares the historical ConfettiSwiftUI renderer, and tests touches through live confetti. See [physical-device setup and result interpretation](Documentation/PROFILING.md). The comparison dependency belongs only to the benchmark app; the library stays dependency-free.
 
-### Renderer and shape experiments
+### Renderer and shape study
 
-The [renderer study](Documentation/RENDERER_STUDY.md) compares the shipping renderer with adjustable Core Animation layers, CAEmitterLayer, and SpriteKit (including a texture-atlas variant). It isolates particle size, individual shapes, texture resolution, cache warming, motion sampling and background UI movement. Run `python3 tools/compare.py --suite all` for the complete physical-device study, or `python3 tools/compare.py --visual-review` to replay the alternatives by hand. Visual Review includes flat and 3D-tilted native/SpriteKit particles, individual rise/fall timing, a softly scattered blast edge, and Replay/Shuffle controls for repeatable or fresh mixes. Native particles now stage their launch clock to prevent early cannons missing their birth window at large loads; screenshot regressions check cannon visibility and every slot in a 5,760-piece diagnostic grid. Its particle-count menu reaches 5,760 pieces for stress candidates. Use `python3 tools/compare.py --suite stress` for the separate 24-case capacity test; `--suite all` excludes this extra-heavy suite. It offers to stop an existing run and restart; `--stop` stops a run by itself. Opening the installed Confetti Benchmarks app directly also opens Visual Review. Reports distinguish actual Instruments hitches from display-link scheduling and keep incomplete evidence unavailable. The [October 28 flight screening](Documentation/FLIGHT_V4_RESULTS.md) records the limited 720-piece hitch comparison, 5,760-piece correctness screen and physical interaction checks. These are benchmark-only experiments; the released renderer is unchanged.
+The [renderer study](Documentation/RENDERER_STUDY.md) now tests the shipping native
+renderer in flat and 3D modes against adjustable layers and a frozen 0.1 baseline.
+SpriteKit and atlas experiments have been removed; historical findings remain in
+the study notes. Run `python3 tools/compare.py --visual-review` for Replay/Shuffle
+and the 5,760-piece stress selector. `--suite stress` records eight native cases
+(two appearances at four loads); `--suite all` isolates shape, size, texture and
+sampling factors without the stress sweep. The tool offers to stop an existing
+owned run before restarting. Opening Confetti Benchmarks directly also opens
+Visual Review.
+
+The verified native launch fix and softened distribution are now production code,
+not separate implementations in the demo. Reports distinguish Instruments hitches
+from callback timing and keep missing evidence unavailable. See the study guide
+for bounded physical results and [release validation](VALIDATION.md).

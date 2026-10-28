@@ -22,7 +22,7 @@ final class StudyFlightTests: XCTestCase {
     }
     func testConstantAccelerationInEachPhaseAndLessTimeNearTheTop() {
         var oldDwell = 0.0, newDwell = 0.0
-        for p in burst().particles(paletteCount: 3) {
+        for (p, old) in zip(burst().particles(paletteCount: 3), LegacyConfettiBurst(burst()).particles(paletteCount: 3)) {
             func acceleration(_ t: Double) -> Double {
                 (StudyFlight.verticalVelocity(p, at: t + 0.001) - StudyFlight.verticalVelocity(p, at: t)) / 0.001
             }
@@ -30,8 +30,8 @@ final class StudyFlightTests: XCTestCase {
             XCTAssertEqual(acceleration(p.launchDuration + StudyFlight.fallDuration(p) * 0.25), acceleration(p.launchDuration + StudyFlight.fallDuration(p) * 0.75), accuracy: 1e-7)
             for step in 0..<1000 {
                 let t = max(p.lifetime, StudyFlight.duration(p)) * Double(step) / 1000, top = p.y + p.dy
-                if abs(p.position(at: t).y - top) <= 5 { oldDwell += max(p.lifetime, StudyFlight.duration(p)) / 1000 }
-                if abs(StudyFlight(p, softenEdge: false).position(at: t).y - top) <= 5 { newDwell += max(p.lifetime, StudyFlight.duration(p)) / 1000 }
+                if abs(old.position(at: t).y - old.y - old.dy) <= 5 { oldDwell += max(p.lifetime, StudyFlight.duration(p)) / 1000 }
+                if abs(StudyFlight(p).position(at: t).y - top) <= 5 { newDwell += max(p.lifetime, StudyFlight.duration(p)) / 1000 }
             }
         }
         XCTAssertLessThan(newDwell, oldDwell * 0.75)
@@ -40,16 +40,17 @@ final class StudyFlightTests: XCTestCase {
     func testSoftEdgeTapersBeyondNominalReachWithoutMovingTheAverage() {
         var original: [Double] = [], softened: [Double] = []
         for seed in 1...20 {
-            for p in StudyPopulation.particles(burst(count: 5760, seed: UInt64(seed)), paletteCount: 3) {
+            let b = burst(count: 5760, seed: UInt64(seed))
+            original += LegacyConfettiBurst(b).particles(paletteCount: 3).map { hypot($0.dx, $0.dy) / 130 }
+            for p in StudyPopulation.particles(b, paletteCount: 3) {
                 let f = StudyFlight(p)
-                original.append(hypot(p.dx, p.dy) / 130)
                 softened.append(hypot(f.dx, f.dy) / 130)
                 XCTAssertTrue(f.dx.isFinite && f.dy.isFinite)
                 XCTAssertEqual(f.dx, StudyFlight(p).dx)
             }
         }
         let count = Double(softened.count)
-        let mean = softened.reduce(0,+)/count, oldMean = original.reduce(0,+)/count
+        let mean = softened.reduce(0,+)/count, oldMean = original.reduce(0,+)/Double(original.count)
         XCTAssertEqual(mean, oldMean, accuracy: 0.015)
         XCTAssertTrue(original.allSatisfy { $0 <= 1 })
         let beyond = Double(softened.filter { $0 > 1 }.count)/count
@@ -71,6 +72,6 @@ final class StudyFlightTests: XCTestCase {
             XCTAssertTrue(first.allSatisfy { StudyFlight.position($0, at: 1).y.isFinite })
         }
         XCTAssertTrue(StudyPopulation.particles(burst(count: 10_000), paletteCount: 3).isEmpty)
-        XCTAssertEqual(burst(count: 5760).particles(paletteCount: 3).count, 2000, "Keep the shipping safety cap")
+        XCTAssertEqual(burst(count: 5760).particles(paletteCount: 3).count, 5760, "The native package supports this stress population")
     }
 }

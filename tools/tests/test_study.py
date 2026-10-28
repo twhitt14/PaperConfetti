@@ -40,22 +40,20 @@ class StudyTests(unittest.TestCase):
         cases = study.manifest()
         for count in (180,720):
             rows = [c for c in cases if 'renderers' in c['suites'] and c['count']==count]
-            self.assertEqual({c['renderer'] for c in rows},{'paper','layers','emitter','sprite'})
+            self.assertEqual({c['renderer'] for c in rows},{'paper','layers','emitter'})
             self.assertTrue(all(c['size']==10 and c['shapes']=='festive' and c['hostMotion'] for c in rows))
         self.assertEqual(len([c for c in cases if c['id'].startswith('shape-')]),16)
         self.assertTrue(all(c['count']<=(5760 if 'stress' in c['suites'] else 720) and c['count']%5==0 and 12<=c['samples']<=48 for c in cases))
 
     def test_stress_suite_matches_loads_and_is_explicit(self):
         cases = study.select_cases('stress')
-        self.assertEqual(len(cases), 24)
+        self.assertEqual(len(cases), 8)
         self.assertEqual({c['count'] for c in cases}, {720, 1440, 2880, 5760})
         for count in (720, 1440, 2880, 5760):
             rows = [c for c in cases if c['count'] == count]
-            self.assertEqual(len(rows), 6)
-            self.assertEqual({(c['renderer'], c.get('native3D', False), c['atlas']) for c in rows},
-                             {('emitter', False, False), ('emitter', True, False),
-                              ('sprite', False, False), ('sprite', True, False),
-                              ('sprite', False, True), ('sprite', True, True)})
+            self.assertEqual(len(rows), 2)
+            self.assertEqual({(c['renderer'], c.get('native3D', False)) for c in rows},
+                             {('emitter', False), ('emitter', True)})
             self.assertTrue(all(c['hostMotion'] and c['shapes'] == 'festive' and c['size'] == 10 for c in rows))
         self.assertFalse(any('stress' in c['suites'] for c in study.select_cases('all')))
 
@@ -91,15 +89,6 @@ class StudyTests(unittest.TestCase):
         study.validate(data,'r','timing',cases,1,False)
         for key,value in [('native_staged_clock',False),('native_arm_delay_ms',None),
                           ('native_arm_delay_ms',float('nan')),('native_arm_delay_ms',0)]:
-            bad=copy.deepcopy(data);bad['rows'][0][key]=value
-            with self.assertRaises(study.p.ProfileError): study.validate(bad,'r','timing',cases,1,False)
-
-    def test_sprite_requires_population_and_scene_update_evidence(self):
-        cases=study.select_cases('renderers','sprite-3d-720')
-        data=self.payload(); row=data['rows'][0]
-        row.update(scenario='sprite-3d-720', sprite_particles_started=720, sprite_scene_updates=200)
-        study.validate(data,'r','timing',cases,1,False)
-        for key,value in [('sprite_particles_started',0),('sprite_particles_started',719),('sprite_scene_updates',0)]:
             bad=copy.deepcopy(data);bad['rows'][0][key]=value
             with self.assertRaises(study.p.ProfileError): study.validate(bad,'r','timing',cases,1,False)
 

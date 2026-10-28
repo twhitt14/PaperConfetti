@@ -73,13 +73,17 @@
             let view = ConfettiLayerView()
             let burst = ConfettiBurst(cannons: [.init(x: 40, y: 500)], seed: 42)
             view.show(burst: burst, colors: [.blue, .orange, .gray])
-            let paper = try XCTUnwrap(view.layer.sublayers?.first)
+            let clock = try XCTUnwrap(view.layer.sublayers?.first)
+            let paper = try XCTUnwrap(clock.sublayers?.first)
             let animation = try XCTUnwrap(paper.animation(forKey: "flight"))
             view.frame.size = CGSize(width: 390, height: 500)
             view.show(burst: burst, colors: [.blue, .orange, .gray])
-            XCTAssertTrue(view.layer.sublayers?.first === paper)
+            XCTAssertTrue(view.layer.sublayers?.first === clock)
+            XCTAssertTrue(clock.sublayers?.first === paper)
             XCTAssertEqual(paper.animation(forKey: "flight")?.beginTime, animation.beginTime)
-            XCTAssertEqual(paper.position, CGPoint(x: 40, y: 500))
+            let group = try XCTUnwrap(paper.animation(forKey: "flight") as? CAAnimationGroup)
+            let positions = try XCTUnwrap(group.animations?.first as? CAKeyframeAnimation)
+            XCTAssertEqual((positions.values?.first as? NSValue)?.cgPointValue, CGPoint(x: 40, y: 500))
             view.cancel()
         }
         func testCancellationRemovesAllWorkAndCannotReplayTheSameBurst() {
@@ -108,12 +112,29 @@
             view.show(burst: burst, colors: [.blue], enabled: true)
             XCTAssertEqual(view.particleLayerCount, 0, "Do not replay a celebration on return to the app")
         }
+        func testNativeRendererSupportsFlatAnd3DAndCancellationBeforeArming() async throws {
+            let view = ConfettiLayerView()
+            for appearance in ConfettiAppearance.allCases {
+                let burst = ConfettiBurst(cannons: [.init(x: 40, y: 500)], seed: 42, appearance: appearance)
+                view.play(burst: burst, colors: [.cyan, .orange])
+                let clock = try XCTUnwrap(view.layer.sublayers?.first)
+                let emitter = try XCTUnwrap(clock.sublayers?.first as? CAEmitterLayer)
+                let group = try XCTUnwrap(emitter.animation(forKey: "flight") as? CAAnimationGroup)
+                XCTAssertEqual(emitter.emitterCells?.count, 1)
+                let tilt = group.animations?.compactMap { $0 as? CAPropertyAnimation }.contains { $0.keyPath == "transform.rotation.x" }
+                XCTAssertEqual(tilt, appearance == .threeDimensional)
+                view.cancel()
+                try await Task.sleep(nanoseconds: 250_000_000)
+                XCTAssertEqual(view.particleLayerCount, 0)
+                XCTAssertTrue(view.layer.sublayers?.isEmpty ?? true, "A delayed readiness callback cannot resurrect a cancelled burst")
+            }
+        }
         func testCompletedBurstReleasesItsLayers() async throws {
             let view = ConfettiLayerView()
             let burst = ConfettiBurst(cannons: [.init(x: 0, y: 0, count: 1)], seed: 42, radius: 1, fall: 1)
             view.show(burst: burst, colors: [.blue])
             let end = try XCTUnwrap(burst.particles(paletteCount: 1).map(\.endTime).max())
-            try await Task.sleep(nanoseconds: UInt64((end + 0.3) * 1_000_000_000))
+            try await Task.sleep(nanoseconds: UInt64((end + 2.4) * 1_000_000_000))
             XCTAssertEqual(view.particleLayerCount, 0)
         }
     }

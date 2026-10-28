@@ -16,34 +16,12 @@ final class BenchmarkSmokeTests: XCTestCase {
 final class RendererStudyTests: XCTestCase {
     func testAllRenderersCompleteAndCleanUp() {
         let app = XCUIApplication()
-        app.launchArguments = ["--study=paper-720,layers-720,emitter-720,emitter-3d-720,sprite-720,sprite-3d-720,sprite-atlas-720,sprite-atlas-3d-720", "--study-rounds=1", "--autostart", "--run-id=study-ui-smoke"]
+        app.launchArguments = ["--study=paper-720,layers-720,emitter-720,emitter-3d-720", "--study-rounds=1", "--autostart", "--run-id=study-ui-smoke"]
         app.launch()
         let status = app.staticTexts["study-status"]
         XCTAssertTrue(status.waitForExistence(timeout: 10))
         expectation(for: NSPredicate(format: "label == %@", "Comparison saved"), evaluatedWith: status)
         waitForExpectations(timeout: 105)
-    }
-
-    func testSpriteKitRepeatedReplayAnd3DAtlasStayInteractive() {
-        let app = XCUIApplication()
-        app.launchArguments = ["--visual-review", "--study=sprite-3d-720,sprite-atlas-3d-720"]
-        app.launch()
-        XCTAssertTrue(app.buttons["study-replay"].waitForExistence(timeout: 10))
-        for _ in 0..<3 {
-            app.buttons["study-replay"].tap()
-            app.buttons["study-shuffle"].tap()
-            app.buttons["study-next"].tap()
-            let ready = NSPredicate(format: "NOT (label BEGINSWITH %@)", "Preparing")
-            expectation(for: ready, evaluatedWith: app.staticTexts["study-status"])
-            waitForExpectations(timeout: 5)
-            XCTAssertTrue(app.buttons["study-stop"].isEnabled)
-            app.buttons["study-tap"].coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
-            app.buttons["study-stop"].tap()
-            XCTAssertTrue(app.staticTexts["study-status"].label.contains("Animation stopped"))
-        }
-        let attachment = XCTAttachment(screenshot: app.screenshot())
-        attachment.name = "SpriteKit transparent after repeated cancellation"; attachment.lifetime = .keepAlways
-        add(attachment)
     }
 
     func testShuffleChangesMixButReplayKeepsIt() {
@@ -88,10 +66,10 @@ final class RendererStudyTests: XCTestCase {
 
     func testAllRendererOverlaysPassThroughRealTapsAndScrolling() {
         let app = XCUIApplication()
-        app.launchArguments = ["--visual-review", "--study=paper-720,layers-720,emitter-720,emitter-3d-720,sprite-720,sprite-3d-720,sprite-atlas-720,sprite-atlas-3d-720"]
+        app.launchArguments = ["--visual-review", "--study=paper-720,layers-720,emitter-720,emitter-3d-720"]
         app.launch()
         XCTAssertTrue(app.buttons["study-replay"].waitForExistence(timeout: 10))
-        for index in 0..<8 {
+        for index in 0..<4 {
             app.buttons["study-replay"].tap()
             let ready = NSPredicate(format: "NOT (label BEGINSWITH %@)", "Preparing")
             expectation(for: ready, evaluatedWith: app.staticTexts["study-status"])
@@ -105,7 +83,7 @@ final class RendererStudyTests: XCTestCase {
             scroll.swipeUp()
             scroll.swipeUp()
             XCTAssertTrue(app.staticTexts["study-scroll-end"].isHittable)
-            if index < 7 { app.buttons["study-next"].tap() }
+            if index < 3 { app.buttons["study-next"].tap() }
         }
     }
 }
@@ -135,8 +113,10 @@ final class NativeEmissionTests: XCTestCase {
     private func fireAndObserve(_ app: XCUIApplication, name: String) -> Set<Int> {
         app.buttons["probe-fire"].coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
         var visible: Set<Int> = []
+        var captures: [XCUIScreenshot] = []
         for _ in 0..<10 {
             let screenshot = app.screenshot()
+            captures.append(screenshot)
             visible.formUnion(cannons(in: screenshot))
             if visible.count == 5 {
                 let attachment = XCTAttachment(screenshot: screenshot)
@@ -144,6 +124,13 @@ final class NativeEmissionTests: XCTestCase {
                 break
             }
             Thread.sleep(forTimeInterval: 0.12)
+        }
+        if visible.count != 5 {
+            for (index, screenshot) in captures.enumerated() {
+                let attachment = XCTAttachment(screenshot: screenshot)
+                attachment.name = "\(name) incomplete frame \(index)"
+                attachment.lifetime = .keepAlways; add(attachment)
+            }
         }
         return visible
     }

@@ -21,6 +21,12 @@ public struct ConfettiEmitter: Equatable, Sendable {
     }
 }
 
+/// Paper orientation. Both appearances use the native particle renderer.
+public enum ConfettiAppearance: String, CaseIterable, Sendable {
+    case flat
+    case threeDimensional
+}
+
 /// Advanced paper motion. Ordinary callers can keep the lifelike defaults.
 public struct ConfettiMotion: Equatable, Sendable {
     public var launchDuration: ClosedRange<Double>?
@@ -66,12 +72,13 @@ public struct ConfettiBurst: Equatable, Sendable {
     /// A new multiplier is drawn once per distinct shape in each seeded burst.
     public var fallSpeedRange: ClosedRange<Double>
     public var motion: ConfettiMotion
+    public var appearance: ConfettiAppearance
     public init(
         cannons: [ConfettiEmitter], seed: UInt64 = .random(in: 1...UInt64.max),
         radius: Double = 130, fall: Double = 320, size: Double = 10,
         shapes: [ConfettiShape] = ConfettiShape.festive,
         fallSpeedRange: ClosedRange<Double> = 0.75...1.35,
-        motion: ConfettiMotion = .init()
+        motion: ConfettiMotion = .init(), appearance: ConfettiAppearance = .threeDimensional
     ) {
         self.cannons = cannons
         self.seed = seed
@@ -81,6 +88,7 @@ public struct ConfettiBurst: Equatable, Sendable {
         self.shapes = shapes
         self.fallSpeedRange = fallSpeedRange
         self.motion = motion
+        self.appearance = appearance
     }
 
     public func particles(paletteCount: Int) -> [ConfettiParticle] {
@@ -112,7 +120,7 @@ public struct ConfettiBurst: Equatable, Sendable {
         where cannon.x.isFinite && cannon.y.isFinite && cannon.delay.isFinite && cannon.angle.isFinite
             && cannon.spread.isFinite
         {
-            for _ in 0..<min(max(0, cannon.count), max(0, 2_000 - result.count)) {
+            for _ in 0..<min(max(0, cannon.count), max(0, 6_000 - result.count)) {
                 let angle =
                     (cannon.angle.truncatingRemainder(dividingBy: 360) + (random.unit() - 0.5)
                         * min(abs(cannon.spread), 360))
@@ -135,7 +143,7 @@ public struct ConfettiBurst: Equatable, Sendable {
                         spin: (random.unit() < 0.5 ? -1 : 1) * random.value(in: motion.spin),
                         tumble: random.value(in: motion.tumble), flutter: motion.flutter,
                         fadeOutStart: motion.fadeOutStart,
-                        shape: shape, color: Int(random.unit() * Double(paletteCount))))
+                        shape: shape, color: Int(random.unit() * Double(paletteCount))).softened)
             }
         }
         return result
@@ -151,12 +159,12 @@ public struct ConfettiParticle: Equatable, Sendable {
     public var endTime: Double { delay + lifetime }
 
     public func position(at age: Double) -> (x: Double, y: Double) {
-        let launch = Self.lookup(Self.launchCurve, at: age / launchDuration)
-        let rain = Self.lookup(Self.rainCurve, at: (age - launchDuration) / fallDuration)
-        // Fall starts after launch: matching silhouettes share the same descent
-        // curve and duration, regardless of their individual launch or spin.
-        let flutter = sin(age * 7 + phase) * self.flutter * sin(min(1, max(0, age / lifetime)) * .pi)
-        return (x + dx * launch + flutter, y + dy * launch + fall * rain)
+        let age = min(lifetime, max(0, age))
+        let up = min(1, age / launchDuration)
+        let launch = 2 * up - up * up
+        let down = max(0, (age - launchDuration) / fallDuration)
+        let sway = sin(age * 7 + phase) * flutter * sin(age / lifetime * .pi)
+        return (x + dx * launch + sway, y + dy * launch + fall * down * down)
     }
     public func opacity(at age: Double) -> Double {
         guard age >= 0, age < lifetime else { return 0 }
@@ -164,35 +172,29 @@ public struct ConfettiParticle: Equatable, Sendable {
         let fade = max(0, (descent - fadeOutStart) / (1 - fadeOutStart))
         return min(1, age / 0.025) * max(0, 1 - fade * fade)
     }
-    // Every particle uses these same normalized timing curves. Invert them once,
-    // rather than thousands of times on the main thread when a burst is attached.
-    private static let launchCurve = (0...1024).map {
-        bezier(Double($0) / 1024, x1: 0.1, y1: 0.8, x2: 0, y2: 1)
+    // Independent seeded streams retain the energetic outer-weighted population
+    // while feathering its radius/cone boundary and individual descent times.
+    private func unit(_ salt: UInt64) -> Double {
+        var bits = phase.bitPattern ^ spin.bitPattern ^ salt
+        bits = (bits ^ (bits >> 30)) &* 0xbf58476d1ce4e5b9
+        bits = (bits ^ (bits >> 27)) &* 0x94d049bb133111eb
+        bits ^= bits >> 31
+        return Double(bits >> 11) / Double(UInt64(1) << 53)
     }
-    private static let rainCurve = (0...1024).map {
-        bezier(Double($0) / 1024, x1: 0.12, y1: 0, x2: 0.39, y2: 0)
+    fileprivate var softened: Self {
+        let u = max(1 / Double(UInt64(1) << 53), unit(0x7265_6163_682d_7635))
+        let normalRadius = sqrt(-2 * log(u))
+        let normalAngle = unit(0x616e_676c_652d_7635) * 2 * .pi
+        let spread = 0.24
+        let reach = hypot(dx, dy) * exp(spread * normalRadius * cos(normalAngle) - spread * spread / 2)
+        let angle = atan2(dy, dx) + normalRadius * sin(normalAngle) * 4 * .pi / 180
+        return Self(x: x, y: y, delay: delay, dx: cos(angle) * reach, dy: sin(angle) * reach,
+                    fall: fall, launchDuration: launchDuration,
+                    fallDuration: fallDuration * (0.8 + 0.4 * unit(0x6661_6c6c_7469_6d65)),
+                    fallSpeed: fallSpeed, size: size, phase: phase, spin: spin, tumble: tumble,
+                    flutter: flutter, fadeOutStart: fadeOutStart, shape: shape, color: color)
     }
-    private static func lookup(_ values: [Double], at fraction: Double) -> Double {
-        guard fraction > 0 else { return 0 }
-        guard fraction < 1 else { return 1 }
-        let sample = fraction * Double(values.count - 1)
-        let index = Int(sample)
-        return values[index] + (values[index + 1] - values[index]) * (sample - Double(index))
-    }
-    // Invert the cubic's x, rather than assuming its parameter is elapsed time.
-    static func bezier(_ fraction: Double, x1: Double, y1: Double, x2: Double, y2: Double) -> Double {
-        let x = min(1, max(0, fraction))
-        var low = 0.0
-        var high = 1.0
-        func cubic(_ t: Double, _ a: Double, _ b: Double) -> Double {
-            3 * (1 - t) * (1 - t) * t * a + 3 * (1 - t) * t * t * b + t * t * t
-        }
-        for _ in 0..<20 {
-            let mid = (low + high) / 2
-            if cubic(mid, x1, x2) < x { low = mid } else { high = mid }
-        }
-        return cubic((low + high) / 2, y1, y2)
-    }
+
 }
 
 struct ConfettiRandom {

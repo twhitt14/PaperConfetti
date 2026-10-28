@@ -17,7 +17,6 @@ struct StudyScenario: Decodable, Identifiable {
     let uniformSpeed: Bool
     let prewarm: Bool
     let opaqueProxy: Bool
-    let atlas: Bool
     let paddedTexture: Bool
     let trilinear: Bool
     let native3D: Bool?
@@ -32,8 +31,8 @@ struct StudyScenario: Decodable, Identifiable {
         return manifest.scenarios
     }()
     var displayName: String {
-        let names = ["paper": "PaperConfetti original", "layers": "Adjustable layers",
-                     "emitter": native3D == true ? "Native particles · 3D tilt" : "Native particles · flat", "sprite": (atlas ? "SpriteKit atlas" : "SpriteKit") + (native3D == true ? " · 3D tilt" : " · flat"),
+        let names = ["paper": "PaperConfetti 0.1 baseline", "layers": "Adjustable layers",
+                     "emitter": native3D == true ? "Native particles · 3D tilt" : "Native particles · flat",
                      "none": "No confetti"]
         if id == "adaptive-keyframes" { return "Adjustable layers · adaptive · \(count)" }
         let simple = suites.contains("renderers")
@@ -61,7 +60,9 @@ struct StudyScenario: Decodable, Identifiable {
         if !tumble { burst.motion.tumble = 0...0 }
         if !flutter { burst.motion.flutter = 0 }
         if ProcessInfo.processInfo.arguments.contains("--emission-probe") {
-            burst.radius = 2; burst.fallSpeedRange = 1...1
+            // Keep the diagnostic population alive long enough for screenshot RPCs.
+            // The probe host holds position/opacity; actual cell birth timing stays unchanged.
+            burst.radius = 2; burst.fall = 800; burst.fallSpeedRange = 1...1
             burst.motion.flutter = 0; burst.motion.tumble = 0...0; burst.motion.spin = 0...0
             burst.motion.launchDuration = 0.3...0.3
             for i in burst.cannons.indices { burst.cannons[i].spread = 0 }
