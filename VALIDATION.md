@@ -5,7 +5,7 @@
 The package now uses native particles by default, with flat/3D appearances. Local
 validation on Xcode 27.2 RC (27B48), Swift 6.4.2 and the dedicated iOS 27.2 simulator:
 
-- Nine macOS physics tests; sixteen iOS package/renderer tests.
+- Nine macOS physics tests; seventeen iOS package/renderer tests.
 - Three example UI tests, including both appearances, real touch-through scrolling,
   navigation, Reduce Motion, cancellation and repeated pops.
 - macOS/iOS Release builds and DocC passed. The example screenshot was recaptured
@@ -27,6 +27,19 @@ validation on Xcode 27.2 RC (27B48), Swift 6.4.2 and the dedicated iOS 27.2 simu
   `.artifacts/profile-20261028T193958Z-95c1d5/`. The optional physical repeat of
   this diagnostic-only adjustment stopped when the phone locked; the production
   renderer itself is unchanged from the successful physical run above.
+
+Hosted preflight also found a Swift type-checker timeout in a long pixel-coordinate
+expression, resolved by explicit intermediate values. Both toolchains then passed
+package/example validation, but stress screenshots confirmed a later-cannon birth
+miss (4,608/5,760 occupied slots on one run). The production renderer now births
+cells in a shared protected window and delays only their visible flights; cell
+lifetimes include that delay, and motion tracks own all translation. Three full
+local pixel repetitions passed (18 cannon replays, three complete 5,760-slot
+grids and three negative controls), followed by all 17 package tests, three
+example UI tests, Release builds and DocC. Evidence: `.artifacts/Release02SharedBirth.xcresult`
+and `.artifacts/validation-20261028T201322Z/`. The earlier
+physical receipt predates this final launch adjustment. Fresh CI/device receipts
+are recorded in the release notes rather than claiming the older run covers it.
 
 This physical evidence establishes emission correctness on the tested device,
 not a general FPS/energy or all-device capacity guarantee. The historical 0.1 CPU

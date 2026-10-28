@@ -129,6 +129,27 @@
                 XCTAssertTrue(view.layer.sublayers?.isEmpty ?? true, "A delayed readiness callback cannot resurrect a cancelled burst")
             }
         }
+        func testDelayedCannonsShareBirthWindowButKeepTheirFlightDelay() throws {
+            let view = ConfettiLayerView()
+            let burst = ConfettiBurst(cannons: [
+                .init(x: 20, y: 200, count: 1), .init(x: 80, y: 200, delay: 5, count: 1)
+            ], seed: 42)
+            view.play(burst: burst, colors: [.cyan])
+            defer { view.cancel() }
+            let clock = try XCTUnwrap(view.layer.sublayers?.first)
+            let emitters = try XCTUnwrap(clock.sublayers?.compactMap { $0 as? CAEmitterLayer })
+            let particles = burst.particles(paletteCount: 1)
+            XCTAssertEqual(emitters.count, 2)
+            for (emitter, particle) in zip(emitters, particles) {
+                XCTAssertEqual(emitter.beginTime, 0.000001)
+                XCTAssertEqual(emitter.opacity, 0, "Hide cells until their flight animation starts")
+                let flight = try XCTUnwrap(emitter.animation(forKey: "flight") as? CAAnimationGroup)
+                XCTAssertEqual(flight.beginTime, max(0.000001, particle.delay))
+                let cell = try XCTUnwrap(emitter.emitterCells?.first)
+                XCTAssertGreaterThan(Double(cell.lifetime), particle.endTime)
+                XCTAssertEqual(cell.velocity, 0, "A delayed cell must not drift before launch")
+            }
+        }
         func testCompletedBurstReleasesItsLayers() async throws {
             let view = ConfettiLayerView()
             let burst = ConfettiBurst(cannons: [.init(x: 0, y: 0, count: 1)], seed: 42, radius: 1, fall: 1)

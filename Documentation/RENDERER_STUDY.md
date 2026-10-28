@@ -6,6 +6,9 @@ the old clock remains only as a regression control. SpriteKit/atlas code and act
 cases were removed after visual/performance review. The frozen `paper` case is the
 0.1 renderer/physics, and `layers` remains a diagnostic. The current stress suite has
 eight cases (two native appearances × four loads); Visual Review has five variants.
+The production renderer also shares one protected initial birth window across
+cannons, with delays applied to visible flight. This addresses later-cannon misses
+observed on hosted simulator runs after the v5 first-cannon fix.
 The original app-only and Instruments records below remain historical evidence,
 with their tested revision and limitations. They are not measurements of every
 subsequent package build.

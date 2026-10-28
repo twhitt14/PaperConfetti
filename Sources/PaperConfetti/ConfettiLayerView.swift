@@ -52,7 +52,9 @@ import UIKit
             emitter.renderMode = .unordered; emitter.preservesDepth = false
             emitter.seed = UInt32(truncatingIfNeeded: p.phase.bitPattern ^ p.delay.bitPattern ^ p.dx.bitPattern)
             emitter.opacity = 0
-            emitter.beginTime = max(0.000001, p.delay)
+            // All cells share the protected initial birth window. Cannon delays
+            // belong to their visible flight, not another short future birth window.
+            emitter.beginTime = 0.000001
             let cell = CAEmitterCell()
             let shape = shapes.firstIndex(of: p.shape)!
             let pose = Int(p.phase / (2 * .pi) * 8) % 8
@@ -60,8 +62,8 @@ import UIKit
             cell.contentsScale = scale
             // First birth at 40ms is inside the window, next at 80ms is outside.
             // CAEmitterCell exposes a rate, not an exact-count emission operation.
-            cell.birthRate = 25; cell.duration = 0.06; cell.lifetime = Float(p.lifetime + 0.06)
-            cell.velocity = CGFloat(cos(p.phase) * p.flutter * 0.5)
+            cell.birthRate = 25; cell.duration = 0.06; cell.lifetime = Float(p.endTime + 0.06)
+            cell.velocity = 0 // The sampled flight owns translation, including while waiting.
             cell.velocityRange = 0; cell.emissionLongitude = 0; cell.emissionRange = 0
             cell.xAcceleration = 0; cell.yAcceleration = 0
             cell.scale = CGFloat(p.size / burst.size); cell.scaleRange = 0
@@ -80,7 +82,7 @@ import UIKit
                 tilt.fromValue = p.phase; tilt.toValue = p.phase + p.tumble * p.lifetime
                 group.animations?.append(tilt)
             }
-            group.duration = p.lifetime; group.beginTime = 0.000001
+            group.duration = p.lifetime; group.beginTime = max(0.000001, p.delay)
             group.timingFunction = CAMediaTimingFunction(name: .linear)
             group.animations?.forEach { $0.duration = p.lifetime }
             clock.addSublayer(emitter); emitter.add(group, forKey: "flight")
