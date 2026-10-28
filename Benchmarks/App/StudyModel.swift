@@ -12,6 +12,7 @@ import os.signpost
     @Published var taps = 0
     @Published var activeTaps = 0
     @Published var visualIndex = 0
+    @Published var visualCount = 720
     @Published var visualNote = ""
     @Published private(set) var visualSeed: UInt64 = 1001
     let renderer = StudyRenderer()
@@ -32,9 +33,9 @@ import os.signpost
         visual = arguments.contains("--visual-review") || !arguments.contains(where: { $0.hasPrefix("--run-id=") })
         let selection = arguments.first { $0.hasPrefix("--study=") }.map { String($0.dropFirst(8)).split(separator: ",").map(String.init) }
         scenarios = selection.map { ids in ids.compactMap { id in StudyScenario.all.first { $0.id == id } } }
-            ?? ["emitter-3d-720", "paper-720", "layers-720", "adaptive-keyframes", "emitter-720", "sprite-720", "sprite-atlas-720"].compactMap { id in StudyScenario.all.first { $0.id == id } }
+            ?? ["emitter-3d-720", "emitter-720", "sprite-3d-720", "sprite-atlas-3d-720", "sprite-720", "sprite-atlas-720", "layers-720", "adaptive-keyframes", "paper-720"].compactMap { id in StudyScenario.all.first { $0.id == id } }
         precondition(!scenarios.isEmpty && (selection == nil || scenarios.count == selection!.count), "Invalid study selection")
-        scenario = scenarios[0]
+        scenario = scenarios[0]; visualCount = scenario.count
     }
     private func pause(_ seconds: Double) async throws { try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000)) }
     private func check() throws {
@@ -48,7 +49,10 @@ import os.signpost
         UIApplication.shared.isIdleTimerDisabled = true
         if visual {
             status = "Visual review • Replay keeps the mix • Shuffle changes it"
-            if args.contains("--visual-autoplay") { replay(size: size) }
+            if args.contains("--visual-autoplay") {
+                try? await pause(min(10, max(0, Double(value("--visual-delay=") ?? "0") ?? 0)))
+                replay(size: size)
+            }
             return
         }
         do {
@@ -102,6 +106,11 @@ import os.signpost
                     os_signpost(.end, log: benchmarkLog, name: "Renderer study", signpostID: signpost)
                     try check()
                     guard renderer.isIdle else { throw BenchmarkModel.Failure("Particles remained active after settling.") }
+                    let completion = renderer.completionStats(spec)
+                    if spec.renderer == "sprite" && ((completion["sprite_particles_started"] as? Int) != spec.count || (completion["sprite_scene_updates"] as? Int ?? 0) == 0) {
+                        throw BenchmarkModel.Failure("SpriteKit did not start every requested particle.")
+                    }
+                    row.merge(completion) { _, new in new }
                     row.merge(setup) { _, new in new }
                     row.merge(["scenario": spec.id, "renderer": spec.renderer, "round": round, "warmup": round == 0,
                                "particles": spec.count, "seed": 1000 + round, "idle_after_settle": renderer.isIdle,
@@ -143,9 +152,10 @@ import os.signpost
     func replay(size: CGSize) {
         UIApplication.shared.isIdleTimerDisabled = true
         visualTask?.cancel(); renderer.reset()
-        let spec = scenarios[visualIndex]; scenario = spec
+        let spec = scenarios[visualIndex].resized(to: visualCount); scenario = spec
         let seed = visualSeed
         visualNote = ""; busy = true; showKeyboard = true; scrollToBottom = false
+        status = "Preparing \(spec.displayName)…"
         visualTask = Task {
             await renderer.prepare(spec)
             guard !Task.isCancelled else { return }

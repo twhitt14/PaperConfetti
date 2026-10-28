@@ -11,7 +11,8 @@ import PaperConfetti
     private var removal: DispatchWorkItem?
     private(set) var activeCount = 0
     private(set) var lastStats: [String: Any] = [:]
-    private var scene: SKScene?
+    private var scene: StudySpriteScene?
+    private var preparationID = 0
     private var preparedImages: [CGImage] = []
     private var preparedNativeImages: [CGImage] = []
     private var nativePoseCache: (key: String, images: [CGImage])?
@@ -26,6 +27,7 @@ import PaperConfetti
         accessibilityElementsHidden = true
         particlesView.backgroundColor = .clear; particlesView.isUserInteractionEnabled = false
         sprite.backgroundColor = .clear; sprite.allowsTransparency = true
+        sprite.isOpaque = false; sprite.layer.isOpaque = false; sprite.layer.backgroundColor = UIColor.clear.cgColor
         sprite.isUserInteractionEnabled = false; sprite.ignoresSiblingOrder = true
         sprite.isPaused = true; sprite.isHidden = true
         [production, particlesView, sprite].forEach(addSubview)
@@ -43,12 +45,15 @@ import PaperConfetti
         removal?.cancel(); removal = nil
         production.cancel()
         particlesView.layer.sublayers?.forEach { $0.removeAllAnimations(); $0.removeFromSuperlayer() }
-        scene?.removeAllActions(); scene?.removeAllChildren()
+        // Hide BEFORE clearing/pausing; never expose an old drawable or an empty opaque surface.
+        sprite.isHidden = true
+        scene?.clearParticles()
         sprite.isPaused = true; activeCount = 0
     }
     func reset() {
+        preparationID += 1
         cancel(); preparedImages = []; preparedNativeImages = []; preparedSpriteTextures = []; retainedAtlas = nil
-        sprite.presentScene(nil); scene = nil; sprite.isHidden = true
+        // Keep the transparent scene attached. Replacing it every replay can flash the surface.
     }
     private func scale(_ spec: StudyScenario) -> CGFloat {
         spec.textureScale == 0 ? (window?.screen.scale ?? max(1, traitCollection.displayScale)) : spec.textureScale
@@ -107,21 +112,36 @@ import PaperConfetti
     /// Cache priming is outside the measured trial. A cold-textures case is launched alone in a fresh process.
     func prepare(_ spec: StudyScenario) async {
         reset()
+        let generation = preparationID
         if spec.renderer == "sprite" {
-            let scene = SKScene(size: bounds.size); scene.backgroundColor = .clear; scene.scaleMode = .resizeFill
-            self.scene = scene; sprite.preferredFramesPerSecond = window?.screen.maximumFramesPerSecond ?? 60
-            sprite.presentScene(scene); sprite.isPaused = true; sprite.isHidden = false
+            if scene == nil {
+                let newScene = StudySpriteScene(size: bounds.size)
+                newScene.backgroundColor = .clear; newScene.scaleMode = .resizeFill
+                scene = newScene; sprite.presentScene(newScene)
+            }
+            sprite.preferredFramesPerSecond = window?.screen.maximumFramesPerSecond ?? 60
         }
-        guard spec.prewarm, spec.renderer != "none" else { return }
-        preparedImages = images(spec)
-        if spec.renderer == "emitter" { preparedNativeImages = nativeImages(preparedImages, spec: spec) }
-        if spec.renderer == "sprite" {
-            preparedSpriteTextures = spriteTextures(preparedImages, atlas: spec.atlas)
-            await withCheckedContinuation { continuation in
-                SKTexture.preload(preparedSpriteTextures) { continuation.resume() }
+        if spec.prewarm && spec.renderer != "none" {
+            preparedImages = images(spec)
+            if spec.renderer == "emitter" { preparedNativeImages = nativeImages(preparedImages, spec: spec) }
+            if spec.renderer == "sprite" {
+                preparedSpriteTextures = spriteTextures(preparedImages, atlas: spec.atlas)
+                await withCheckedContinuation { continuation in
+                    SKTexture.preload(preparedSpriteTextures) { continuation.resume() }
+                }
             }
         }
+        guard generation == preparationID, !Task.isCancelled else { return }
+        if spec.renderer == "sprite", let scene {
+            // Let Metal draw a clear frame before exposing the overlay. Alpha zero
+            // hides the previous drawable while keeping SpriteKit's update loop alive.
+            sprite.alpha = 0; sprite.isHidden = false; sprite.isPaused = false
+            await scene.prepareClearFrame()
+            guard generation == preparationID, !Task.isCancelled else { return }
+            sprite.isHidden = true; sprite.isPaused = true; sprite.alpha = 1
+        }
     }
+
     @discardableResult func play(_ spec: StudyScenario, burst: ConfettiBurst) -> [String: Any] {
         cancel()
         guard !UIAccessibility.isReduceMotionEnabled, spec.renderer != "none" else { lastStats = ["requested_particles": 0]; return lastStats }
@@ -132,7 +152,7 @@ import PaperConfetti
                          "particle_layers": production.particleLayerCount, "position_samples": 49, "native_count_is_estimate": false]
             return lastStats
         }
-        let particles = burst.particles(paletteCount: Self.colors.count)
+        let particles = StudyPopulation.particles(burst, paletteCount: Self.colors.count)
         let physicsEnd = CACurrentMediaTime()
         let textures = preparedImages.isEmpty ? images(spec) : preparedImages
         let nativeTextures = spec.renderer == "emitter"
@@ -149,14 +169,17 @@ import PaperConfetti
         let work = DispatchWorkItem { [weak self] in self?.cancel() }
         removal = work
         // Include the brief native birth window; cancellation still removes every layer/node.
-        let lifetime = (particles.map(\.endTime).max() ?? 0) + 0.25
+        let lifetime = (particles.map { $0.delay + StudyFlight.duration($0) }.max() ?? 0) + 0.25
         DispatchQueue.main.asyncAfter(deadline: .now() + lifetime, execute: work)
         lastStats = ["setup_ms": (CACurrentMediaTime() - start) * 1000,
                      "physics_ms": (physicsEnd - start) * 1000, "texture_lookup_ms": (textureEnd - physicsEnd) * 1000,
                      "requested_particles": particles.count, "particle_layers": spec.renderer == "layers" ? particles.count : 0,
                      "submitted_position_samples": submittedSampleCount,
                      "native_count_is_estimate": spec.renderer == "emitter",
-                     "native_motion_model": spec.renderer == "emitter" ? (spec.native3D == true ? "mixed-flight-v3-shared-tilt" : "mixed-flight-v3") : spec.renderer == "sprite" ? "ballistic-v1" : "paper-physics",
+                     "population_batches": Int(ceil(Double(particles.count) / 2_000)),
+                     "shared_flight": spec.sharedFlight == true,
+                     "tilt_enabled": spec.native3D == true,
+                     "native_motion_model": spec.sharedFlight == true ? "parabolic-v4-shared-diagnostic" : "parabolic-v4-individual-timing",
                      "native_pose_texture_count": nativeTextures.count,
                      "native_pose_texture_bytes": nativeTextures.reduce(0) { $0 + $1.bytesPerRow * $1.height },
                      "emitter_cohorts": spec.renderer == "emitter" ? (particlesView.layer.sublayers?.count ?? 0) : 0]
@@ -164,9 +187,10 @@ import PaperConfetti
     }
     private func index(_ p: ConfettiParticle, _ s: StudyScenario) -> Int { p.color * s.shapeSet.count + s.shapeSet.firstIndex(of: p.shape)! }
     private func layers(_ particles: [ConfettiParticle], textures: [CGImage], spec: StudyScenario) {
-        let start = particlesView.layer.convertTime(CACurrentMediaTime(), from: nil)
+        var scheduled: [(CALayer, CAAnimationGroup, Double)] = []
         CATransaction.begin(); CATransaction.setDisableActions(true)
         for p in particles {
+            let duration = StudyFlight.duration(p)
             let layer = CALayer()
             layer.bounds = CGRect(x: 0, y: 0, width: p.size * p.shape.width, height: p.size * p.shape.height)
             layer.contents = textures[index(p, spec)]; layer.contentsScale = scale(spec); layer.opacity = 0
@@ -183,32 +207,31 @@ import PaperConfetti
             submittedSampleCount += track.times.count
             let position = CAKeyframeAnimation(keyPath: "position")
             position.values = track.positions.map { NSValue(cgPoint: $0) }
-            position.keyTimes = track.times.map { NSNumber(value: $0 / p.lifetime) }
+            position.keyTimes = track.times.map { NSNumber(value: $0 / duration) }
             position.calculationMode = .linear
             let alpha = CAKeyframeAnimation(keyPath: "opacity")
             alpha.values = track.opacities
             alpha.keyTimes = position.keyTimes
             let spin = CABasicAnimation(keyPath: "transform.rotation.z")
-            spin.fromValue = p.phase; spin.toValue = p.phase + p.spin * p.lifetime
+            spin.fromValue = p.phase; spin.toValue = p.phase + p.spin * duration
             let tumble = CABasicAnimation(keyPath: "transform.rotation.x")
-            tumble.fromValue = p.phase; tumble.toValue = p.phase + p.tumble * p.lifetime
+            tumble.fromValue = p.phase; tumble.toValue = p.phase + p.tumble * duration
             let group = CAAnimationGroup()
             group.animations = spec.tumble ? [position, alpha, spin, tumble] : [position, alpha, spin]
-            group.duration = p.lifetime; group.beginTime = start + p.delay
+            group.duration = duration
             group.timingFunction = CAMediaTimingFunction(name: .linear)
-            group.animations?.forEach { $0.duration = p.lifetime }
-            particlesView.layer.addSublayer(layer); layer.add(group, forKey: "flight")
+            group.animations?.forEach { $0.duration = duration }
+            particlesView.layer.addSublayer(layer); scheduled.append((layer, group, p.delay))
+        }
+        let start = particlesView.layer.convertTime(CACurrentMediaTime(), from: nil) + 1.0 / 60
+        for (layer, animation, delay) in scheduled {
+            animation.beginTime = start + delay; layer.add(animation, forKey: "flight")
         }
         CATransaction.commit()
         // Accuracy is audited after measurement; no extra per-particle validation in the timed setup.
     }
-    private func groups(_ particles: [ConfettiParticle]) -> [[ConfettiParticle]] {
-        // Stable groups preserve the requested per-cannon shape/color population and one speed per shape.
-        let groups = Dictionary(grouping: particles) { "\($0.delay)|\($0.shape.rawValue)|\($0.color)" }
-        return groups.keys.sorted().map { groups[$0]! }
-    }
     private func emitters(_ particles: [ConfettiParticle], textures: [CGImage], spec: StudyScenario) {
-        let cohorts = NativeParticlePlan.groups(particles)
+        let cohorts = NativeParticlePlan.groups(particles, shared: spec.sharedFlight == true)
         var scheduled: [(layer: CAEmitterLayer, delay: Double)] = []
         CATransaction.begin(); CATransaction.setDisableActions(true)
         for cohort in cohorts {
@@ -254,8 +277,8 @@ import PaperConfetti
             let animation = CAAnimationGroup()
             animation.animations = [flight, alpha]
             if spec.native3D == true {
-                // Public-API approximation: up to three different pieces share this
-                // tilt, but keep their own in-plane spin and initial orientation.
+                // Each piece owns a layer/timing by default. The explicitly selected
+                // shared-flight diagnostic alone groups up to three nearby pieces.
                 let tumble = CABasicAnimation(keyPath: "transform.rotation.x")
                 tumble.fromValue = p.phase; tumble.toValue = p.phase + p.tumble * cohort.duration
                 animation.animations?.append(tumble)
@@ -276,23 +299,13 @@ import PaperConfetti
     private func spriteEmitters(_ particles: [ConfettiParticle], textures: [CGImage], spec: StudyScenario) {
         guard let scene else { preconditionFailure("SpriteKit scene was not prepared") }
         let atlas = preparedSpriteTextures.isEmpty ? spriteTextures(textures, atlas: spec.atlas) : preparedSpriteTextures
-        sprite.isPaused = false
-        for group in groups(particles) {
-            let p = group[0], emitter = SKEmitterNode()
-            emitter.particleTexture = atlas[index(p, spec)]
-            emitter.particleSize = CGSize(width: spec.size * p.shape.width, height: spec.size * p.shape.height)
-            emitter.particleBirthRate = CGFloat(group.count) / 0.06; emitter.numParticlesToEmit = group.count
-            emitter.particleLifetime = p.lifetime
-            emitter.position = CGPoint(x: p.x, y: bounds.height - p.y)
-            emitter.emissionAngle = .pi / 2; emitter.emissionAngleRange = .pi * 40 / 180
-            emitter.particleSpeed = 430; emitter.particleSpeedRange = 30
-            emitter.yAcceleration = -710 * CGFloat(p.fallSpeed)
-            emitter.particleScale = 1; emitter.particleScaleRange = 0.4
-            emitter.particleRotationSpeed = 5; emitter.particleRotationRange = .pi * 2
-            emitter.particleAlphaSpeed = -1 / CGFloat(p.lifetime)
-            emitter.targetNode = scene
-            scene.run(.sequence([.wait(forDuration: p.delay), .run { [weak scene] in scene?.addChild(emitter) }]))
-        }
+        scene.play(NativeParticlePlan.groups(particles, shared: spec.sharedFlight == true),
+                   textures: atlas, spec: spec, canvasHeight: bounds.height)
+        sprite.alpha = 1; sprite.isHidden = false; sprite.isPaused = false
+    }
+    func completionStats(_ spec: StudyScenario) -> [String: Any] {
+        guard spec.renderer == "sprite", let scene else { return [:] }
+        return ["sprite_scene_updates": scene.sceneUpdates, "sprite_particles_started": scene.activatedParticles]
     }
     /// These diagnostics run after the measurement interval, never in animation frames.
     func audit(_ spec: StudyScenario, burst: ConfettiBurst) -> [String: Any] {
@@ -314,7 +327,7 @@ import PaperConfetti
         }
         var maxPositionError = 0.0, maxOpacityError = 0.0, maxGroupingError = 0.0
         var sampleCounts: [Int] = []
-        let all = burst.particles(paletteCount: 3)
+        let all = StudyPopulation.particles(burst, paletteCount: 3)
         func inspect(track: StudyTrack, duration: Double,
                      position: (Double) -> CGPoint, opacity: (Double) -> Double) {
             sampleCounts.append(track.times.count)
@@ -330,25 +343,28 @@ import PaperConfetti
             }
         }
         if spec.renderer == "emitter" {
-            for cohort in NativeParticlePlan.groups(all) {
+            for cohort in NativeParticlePlan.groups(all, shared: spec.sharedFlight == true) {
                 inspect(track: StudyTrack(cohort: cohort), duration: cohort.duration,
                         position: cohort.position, opacity: cohort.opacity)
                 for step in 0...300 {
                     let age = Double(step) / 300 * cohort.duration, center = cohort.position(at: age)
                     for p in cohort.members {
-                        let point = p.position(at: age)
+                        let point = StudyFlight.position(p, at: age)
                         maxGroupingError = max(maxGroupingError, hypot(point.x - center.x, point.y - center.y))
                     }
                 }
             }
         } else if ["layers", "paper"].contains(spec.renderer) {
             for p in all {
-                inspect(track: StudyTrack(particle: p, spec: spec), duration: p.lifetime,
-                        position: { let xy = p.position(at: $0); return CGPoint(x: xy.x, y: xy.y) }, opacity: p.opacity)
+                inspect(track: StudyTrack(particle: p, spec: spec), duration: spec.renderer == "paper" ? p.lifetime : StudyFlight.duration(p),
+                        position: { t in
+                            if spec.renderer == "paper" { let xy = p.position(at: t); return CGPoint(x: xy.x, y: xy.y) }
+                            return StudyFlight.position(p, at: t)
+                        }, opacity: { spec.renderer == "paper" ? p.opacity(at: $0) : StudyFlight.opacity(p, at: $0) })
             }
         }
         let poses = spec.renderer == "emitter" ? nativeImages(textures, spec: spec) : []
-        return ["trajectory_audit_scope": spec.renderer == "emitter" ? "mixed-mean-path-excludes-native-drift-and-tilt" : "individual-particles",
+        return ["trajectory_audit_scope": spec.renderer == "emitter" ? "parabolic-v4-excludes-native-birth-drift-and-tilt" : (spec.renderer == "sprite" ? "analytic-per-frame-no-keyframe-interpolation-audit" : "individual-particles"),
                 "textures": details, "texture_bytes": textures.reduce(0) { $0 + $1.bytesPerRow * $1.height },
                 "native_pose_texture_count": poses.count,
                 "native_pose_texture_bytes": poses.reduce(0) { $0 + $1.bytesPerRow * $1.height },
@@ -373,10 +389,14 @@ private struct StudyTrack {
     let positions: [CGPoint]
     let opacities: [Double]
     init(particle p: ConfettiParticle, spec: StudyScenario) {
-        self.init(duration: p.lifetime, samples: spec.samples, adaptive: spec.sampling == "adaptive",
-                  anchors: [0, min(0.025, p.launchDuration), p.launchDuration,
-                            p.launchDuration + p.fallDuration * p.fadeOutStart, p.lifetime],
-                  position: { let xy = p.position(at: $0); return CGPoint(x: xy.x, y: xy.y) }, opacity: p.opacity)
+        let legacy = spec.renderer == "paper"
+        self.init(duration: legacy ? p.lifetime : StudyFlight.duration(p), samples: spec.samples, adaptive: spec.sampling == "adaptive",
+                  anchors: legacy ? [0, min(0.025, p.launchDuration), p.launchDuration,
+                                     p.launchDuration + p.fallDuration * p.fadeOutStart, p.lifetime] : StudyFlight.anchors(p),
+                  position: { t in
+                      if legacy { let xy = p.position(at: t); return CGPoint(x: xy.x, y: xy.y) }
+                      return StudyFlight.position(p, at: t)
+                  }, opacity: { legacy ? p.opacity(at: $0) : StudyFlight.opacity(p, at: $0) })
     }
     init(cohort: NativeFlightGroup) {
         self.init(duration: cohort.duration, samples: 48, adaptive: true, anchors: cohort.anchors,

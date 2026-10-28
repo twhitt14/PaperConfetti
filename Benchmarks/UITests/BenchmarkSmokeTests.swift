@@ -16,12 +16,34 @@ final class BenchmarkSmokeTests: XCTestCase {
 final class RendererStudyTests: XCTestCase {
     func testAllRenderersCompleteAndCleanUp() {
         let app = XCUIApplication()
-        app.launchArguments = ["--study=paper-720,layers-720,emitter-720,emitter-3d-720,sprite-720,sprite-atlas-720", "--study-rounds=1", "--autostart", "--run-id=study-ui-smoke"]
+        app.launchArguments = ["--study=paper-720,layers-720,emitter-720,emitter-3d-720,sprite-720,sprite-3d-720,sprite-atlas-720,sprite-atlas-3d-720", "--study-rounds=1", "--autostart", "--run-id=study-ui-smoke"]
         app.launch()
         let status = app.staticTexts["study-status"]
         XCTAssertTrue(status.waitForExistence(timeout: 10))
         expectation(for: NSPredicate(format: "label == %@", "Comparison saved"), evaluatedWith: status)
-        waitForExpectations(timeout: 85)
+        waitForExpectations(timeout: 105)
+    }
+
+    func testSpriteKitRepeatedReplayAnd3DAtlasStayInteractive() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--visual-review", "--study=sprite-3d-720,sprite-atlas-3d-720"]
+        app.launch()
+        XCTAssertTrue(app.buttons["study-replay"].waitForExistence(timeout: 10))
+        for _ in 0..<3 {
+            app.buttons["study-replay"].tap()
+            app.buttons["study-shuffle"].tap()
+            app.buttons["study-next"].tap()
+            let ready = NSPredicate(format: "NOT (label BEGINSWITH %@)", "Preparing")
+            expectation(for: ready, evaluatedWith: app.staticTexts["study-status"])
+            waitForExpectations(timeout: 5)
+            XCTAssertTrue(app.buttons["study-stop"].isEnabled)
+            app.buttons["study-tap"].coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+            app.buttons["study-stop"].tap()
+            XCTAssertTrue(app.staticTexts["study-status"].label.contains("Animation stopped"))
+        }
+        let attachment = XCTAttachment(screenshot: app.screenshot())
+        attachment.name = "SpriteKit transparent after repeated cancellation"; attachment.lifetime = .keepAlways
+        add(attachment)
     }
 
     func testShuffleChangesMixButReplayKeepsIt() {
@@ -66,11 +88,14 @@ final class RendererStudyTests: XCTestCase {
 
     func testAllRendererOverlaysPassThroughRealTapsAndScrolling() {
         let app = XCUIApplication()
-        app.launchArguments = ["--visual-review", "--study=paper-720,layers-720,emitter-720,emitter-3d-720,sprite-720,sprite-atlas-720"]
+        app.launchArguments = ["--visual-review", "--study=paper-720,layers-720,emitter-720,emitter-3d-720,sprite-720,sprite-3d-720,sprite-atlas-720,sprite-atlas-3d-720"]
         app.launch()
         XCTAssertTrue(app.buttons["study-replay"].waitForExistence(timeout: 10))
-        for index in 0..<6 {
+        for index in 0..<8 {
             app.buttons["study-replay"].tap()
+            let ready = NSPredicate(format: "NOT (label BEGINSWITH %@)", "Preparing")
+            expectation(for: ready, evaluatedWith: app.staticTexts["study-status"])
+            waitForExpectations(timeout: 5)
             // Do not let XCTest wait until the flight ends before performing the interaction.
             app.buttons["study-tap"].coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
             let tap = app.buttons["study-tap"]
@@ -80,7 +105,7 @@ final class RendererStudyTests: XCTestCase {
             scroll.swipeUp()
             scroll.swipeUp()
             XCTAssertTrue(app.staticTexts["study-scroll-end"].isHittable)
-            if index < 5 { app.buttons["study-next"].tap() }
+            if index < 7 { app.buttons["study-next"].tap() }
         }
     }
 }

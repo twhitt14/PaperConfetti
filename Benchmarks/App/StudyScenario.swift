@@ -2,10 +2,10 @@ import Foundation
 import PaperConfetti
 
 struct StudyScenario: Decodable, Identifiable {
-    let id: String
+    var id: String
     let suites: [String]
     let renderer: String
-    let count: Int
+    var count: Int
     let size: Double
     let shapes: String
     let textureScale: Double
@@ -21,6 +21,7 @@ struct StudyScenario: Decodable, Identifiable {
     let paddedTexture: Bool
     let trilinear: Bool
     let native3D: Bool?
+    let sharedFlight: Bool?
 
     static let all: [Self] = {
         struct Manifest: Decodable { let schema: Int; let scenarios: [StudyScenario] }
@@ -31,12 +32,18 @@ struct StudyScenario: Decodable, Identifiable {
         return manifest.scenarios
     }()
     var displayName: String {
-        let names = ["paper": "PaperConfetti", "layers": "Adjustable layers",
-                     "emitter": native3D == true ? "Native particles · 3D tilt" : "Native particles · flat", "sprite": atlas ? "SpriteKit atlas" : "SpriteKit",
+        let names = ["paper": "PaperConfetti original", "layers": "Adjustable layers",
+                     "emitter": native3D == true ? "Native particles · 3D tilt" : "Native particles · flat", "sprite": (atlas ? "SpriteKit atlas" : "SpriteKit") + (native3D == true ? " · 3D tilt" : " · flat"),
                      "none": "No confetti"]
         if id == "adaptive-keyframes" { return "Adjustable layers · adaptive · \(count)" }
         let simple = suites.contains("renderers")
         return simple ? "\(names[renderer] ?? renderer) · \(count)" : id
+    }
+    var availableCounts: [Int] { renderer == "paper" ? [180, 720, 1440] : [180, 720, 1440, 2880, 5760] }
+    func resized(to count: Int) -> Self {
+        var copy = self
+        if count != self.count { copy.id += "@\(count)"; copy.count = count }
+        return copy
     }
     var shapeSet: [ConfettiShape] {
         if shapes == "festive" { return ConfettiShape.festive }

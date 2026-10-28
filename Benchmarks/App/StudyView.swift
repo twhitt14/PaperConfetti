@@ -12,7 +12,16 @@ struct StudyView: View {
                     Picker("Experiment", selection: $model.visualIndex) {
                         ForEach(model.scenarios.indices, id: \.self) { index in Text(model.scenarios[index].displayName).tag(index) }
                     }.pickerStyle(.menu).accessibilityIdentifier("study-picker")
-                        .onChange(of: model.visualIndex) { _ in model.replay(size: geometry.size) }
+                        .onChange(of: model.visualIndex) { _ in
+                            if !model.scenarios[model.visualIndex].availableCounts.contains(model.visualCount) { model.visualCount = 720 }
+                            else { model.replay(size: geometry.size) }
+                        }
+                    Picker("Particles", selection: $model.visualCount) {
+                        ForEach(model.scenarios[model.visualIndex].availableCounts, id: \.self) { count in
+                            Text("\(count) pieces").tag(count)
+                        }
+                    }.pickerStyle(.menu).accessibilityIdentifier("study-load")
+                        .onChange(of: model.visualCount) { _ in model.replay(size: geometry.size) }
                     HStack {
                         Button("Replay") { model.replay(size: geometry.size) }.accessibilityIdentifier("study-replay")
                         Button("Shuffle") { model.shuffle(size: geometry.size) }.accessibilityIdentifier("study-shuffle")
