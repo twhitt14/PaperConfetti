@@ -28,6 +28,14 @@ class StudyTests(unittest.TestCase):
         changed = {k for k in base if cases['trilinear-textures'][k]!=cases['padded-textures'][k]} - {'id','suites'}
         self.assertEqual(changed,{'trilinear'})
 
+    def test_native_3d_pair_changes_only_shared_tilt(self):
+        cases = {c['id']: c for c in study.manifest()}
+        for count in (180, 720):
+            flat, tilted = cases[f'emitter-{count}'], cases[f'emitter-3d-{count}']
+            self.assertTrue(tilted['native3D'])
+            self.assertEqual({k: v for k, v in tilted.items() if k not in ('id', 'native3D')},
+                             {k: v for k, v in flat.items() if k != 'id'})
+
     def test_matrix_has_matched_renderer_counts_and_is_bounded(self):
         cases = study.manifest()
         for count in (180,720):

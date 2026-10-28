@@ -133,18 +133,19 @@ def write_report(output, receipt, payloads):
                   max(t['width_px'] for t in textures), max(t['height_px'] for t in textures),
                   statistics.mean(t['nontransparent_fraction'] for t in textures),
                   audit.get('minimum_track_samples'), audit.get('maximum_track_samples'),
-                  audit.get('position_interpolation_max_error_points'), audit.get('opacity_interpolation_max_error')]
+                  audit.get('position_interpolation_max_error_points'), audit.get('opacity_interpolation_max_error'),
+                  audit.get('native_pose_texture_count', 0), audit.get('native_pose_texture_bytes', 0), audit.get('grouping_max_error_points')]
         audit_rows += '<tr>' + ''.join(f'<td>{cell(v)}</td>' for v in values) + '</tr>'
     (output / 'report.html').write_text(f'''<!doctype html><meta charset="utf-8"><title>PaperConfetti renderer study</title>
 <style>body{{font:15px system-ui;background:#111827;color:#e5e7eb;margin:32px}}a{{color:#67e8f9}}td,th{{text-align:left;padding:10px;border-bottom:1px solid #374151;white-space:nowrap}}table{{border-collapse:collapse}}.table{{overflow:auto}}p{{max-width:1100px;line-height:1.6}}</style>
 <h1>Renderer and shape study</h1><p>{html.escape(receipt['status'])}</p><p>{html.escape(receipt.get('error',''))}</p>
 <p>Warm medians exclude round zero. Cold-textures results are explicitly first-use trials from fresh processes. A one-round smoke run intentionally has no warm summary. Raw measurements retain every trial, texture dimensions/alpha coverage, requested particle counts and interpolation accuracy.</p>
 <p>CPU is whole-process CPU over the complete trial. Setup includes synchronous particle preparation/animation submission, not the later Core Animation commit. Callback p99 is scheduling, <strong>not rendered FPS</strong>. Actual hitch fields require complete, matching Animation Hitches + Points of Interest exports for this process; absent evidence stays unavailable. Hitch duration is unioned within each trial, with launch = first 500ms. It is not Apple's animation-active hitch time ratio. CPU and memory passes run separately; don't compare their CPU with the timing pass.</p>
-<p>Native CAEmitterLayer now follows shared PaperConfetti flight/fade curves with small horizontal drift and 2D spin; it does not reproduce independent 3D tumble. SpriteKit retains ballistic motion and may leave the viewport sooner. CAEmitterLayer counts are rate-based estimates; SpriteKit uses finite requested counts. All retain the same requested shape/color populations, points-sized images and five launch positions. This is an appearance/performance tradeoff, not proof that a renderer is faster for identical output. Opaque-proxy is diagnostic rectangles, not a proposed design. Compare repeated sessions on the same physical device and thermal state.</p>
+<p>Native CAEmitterLayer mixes distinct shapes/colors in small groups following nearby PaperConfetti flight/fade curves, with individual flat spin, size and baked starting orientation. The 3D-tilt variant tilts each shared group; it does not reproduce independent 3D tumble. Eight cached starting poses per image add bitmap memory; the audit lists them separately. SpriteKit retains ballistic motion and may leave the viewport sooner. CAEmitterLayer counts are rate-based estimates; SpriteKit uses finite requested counts. All retain the same requested shape/color populations, points-sized images and five launch positions. This is an appearance/performance tradeoff, not proof that a renderer is faster for identical output. Opaque-proxy is diagnostic rectangles, not a proposed design. Compare repeated sessions on the same physical device and thermal state.</p>
 <div class="table"><table><tr>{''.join(f'<th>{k}</th>' for k in keys)}</tr>{rows}</table></div>
 <h2>Memory trends</h2><ul>{memory}</ul><p>Whole-process footprint, including framework caches. Use Allocations to attribute retained objects. Cancellation and natural completion are both checked.</p>
-<h2>Texture and trajectory audit</h2><p>First trial per scenario; computed outside timing. Dimensions and bytes describe CPU CGImage backing, not total GPU allocations. Alpha fraction is nontransparent pixels divided by bitmap area. Padding changes that denominator. Error compares sampled/interpolated position and opacity with the underlying physics. CAEmitterLayer audits its shared cohort paths; native drift and 2D spin are excluded. SpriteKit ballistic paths are not audited.</p>
-<div class="table"><table><tr><th>Scenario</th><th>Images</th><th>Bytes</th><th>Max width px</th><th>Max height px</th><th>Nonzero-alpha fraction</th><th>Min samples</th><th>Max samples</th><th>Position error pt</th><th>Opacity error</th></tr>{audit_rows}</table></div>
+<h2>Texture and trajectory audit</h2><p>First trial per scenario; computed outside timing. Dimensions and bytes describe CPU CGImage backing, not total GPU allocations. Alpha fraction is nontransparent pixels divided by bitmap area. Padding changes that denominator. Error compares sampled/interpolated position and opacity with the underlying physics. CAEmitterLayer separately audits interpolation and the deviation of its mixed mean paths from original individual paths; native birth offsets, drift and shared tilt are excluded. SpriteKit ballistic paths are not audited.</p>
+<div class="table"><table><tr><th>Scenario</th><th>Images</th><th>Bytes</th><th>Max width px</th><th>Max height px</th><th>Nonzero-alpha fraction</th><th>Min samples</th><th>Max samples</th><th>Position error pt</th><th>Opacity error</th><th>Extra pose images</th><th>Pose bytes</th><th>Grouping error pt</th></tr>{audit_rows}</table></div>
 <h2>Recordings</h2><ul>{links}</ul><p>Every trace is a bounded chunk. Open it in Instruments, locate “Renderer study” in Points of Interest, then inspect the Animation Hitches, commit, render-server and GPU tracks. Inspect render costs even if process CPU is low.</p>
 <p><a href="report.json">Full provenance and summary</a> · <a href="Study.json">Exact scenario matrix</a></p>''')
 
@@ -167,7 +168,7 @@ def main():
     args = parser.parse_args()
     cases = [] if args.stop else select_cases(args.suite, args.only)
     if args.visual_review and not args.only and args.suite == 'renderers':
-        cases = select_cases('all', 'emitter-720,paper-720,layers-720,sprite-720,sprite-atlas-720')
+        cases = select_cases('all', 'emitter-3d-720,paper-720,layers-720,adaptive-keyframes,emitter-720,sprite-720,sprite-atlas-720')
     if args.list:
         for c in cases:
             print(f'{c["id"]:24} {c["renderer"]:8} {c["count"]:3} particles; {c["shapes"]}; {c["size"]}pt; texture scale {c["textureScale"] or "device"}')
@@ -199,7 +200,7 @@ def main():
                    'xcode':p.run(['xcodebuild','-version']).strip(), 'revision':p.run(['/usr/bin/git','rev-parse','HEAD']).strip(),
                    'working_tree':p.run(['/usr/bin/git','status','--short']),
                    'source_sha256':{str(f.relative_to(p.ROOT)):hashlib.sha256(f.read_bytes()).hexdigest()
-                       for folder in ('Benchmarks/App','Sources/PaperConfetti','tools') for f in (p.ROOT / folder).glob('*.swift' if folder!='tools' else '*.py')},
+                       for folder in ('Benchmarks/App','Benchmarks/Motion','Sources/PaperConfetti','tools') for f in (p.ROOT / folder).glob('*.swift' if folder!='tools' else '*.py')},
                    'manifest_sha256':hashlib.sha256(MANIFEST.read_bytes()).hexdigest(), 'selected':[c['id'] for c in cases], 'recordings':[]}
         payloads = []
         runner = StudyRunner(args, output, device, team)
@@ -216,18 +217,18 @@ def main():
             if team: settings.write_text(json.dumps({'team':team},indent=2)+'\n')
             if args.visual_review:
                 runner.launch(uuid.uuid4().hex, 'visual')
-                print('Visual Review is open on your device. Use Replay, Next, or the Experiment menu. No performance recording is running.', flush=True)
+                print('Visual Review is open on your device. Use Replay, Shuffle, Next, or the Experiment menu. No performance recording is running.', flush=True)
                 receipt['status'] = 'Visual review opened — replay, switch variants, and record Smooth/Launch hitch/Flight hitch'
                 keep_open = True
                 return
             if args.simulator_smoke and not args.only:
-                cases = [c for c in cases if c['id'] in ('control','paper-720','layers-720','emitter-720','sprite-720','sprite-atlas-720')]
+                cases = [c for c in cases if c['id'] in ('control','paper-720','layers-720','emitter-720','emitter-3d-720','sprite-720','sprite-atlas-720')]
             phases = (['timing'] if args.simulator_smoke else ['timing','cpu','memory']) if args.phase=='all' else [args.phase]
             for phase in phases:
                 phase_cases = cases
-                # Memory endurance focuses on the four renderer paths, not every texture experiment.
+                # Memory endurance focuses on renderer paths, not every texture experiment.
                 if phase=='memory' and not args.only:
-                    phase_cases = [c for c in manifest() if c['id'] in ('paper-720','layers-720','emitter-720','sprite-720','sprite-atlas-720')]
+                    phase_cases = [c for c in manifest() if c['id'] in ('paper-720','layers-720','emitter-720','emitter-3d-720','sprite-720','sprite-atlas-720')]
                 chunk_size = 2 if phase == 'memory' else max(1, min(4, 85 // (args.rounds * args.trial_budget)))
                 for index, selected in enumerate(chunks(phase_cases, maximum=chunk_size)):
                     repetitions = args.rounds if not selected[0]['prewarm'] else 1

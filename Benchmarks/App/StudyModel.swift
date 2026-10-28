@@ -13,6 +13,7 @@ import os.signpost
     @Published var activeTaps = 0
     @Published var visualIndex = 0
     @Published var visualNote = ""
+    @Published private(set) var visualSeed: UInt64 = 1001
     let renderer = StudyRenderer()
     let scenarios: [StudyScenario]
     let visual: Bool
@@ -31,7 +32,7 @@ import os.signpost
         visual = arguments.contains("--visual-review") || !arguments.contains(where: { $0.hasPrefix("--run-id=") })
         let selection = arguments.first { $0.hasPrefix("--study=") }.map { String($0.dropFirst(8)).split(separator: ",").map(String.init) }
         scenarios = selection.map { ids in ids.compactMap { id in StudyScenario.all.first { $0.id == id } } }
-            ?? ["emitter-720", "paper-720", "layers-720", "sprite-720", "sprite-atlas-720"].compactMap { id in StudyScenario.all.first { $0.id == id } }
+            ?? ["emitter-3d-720", "paper-720", "layers-720", "adaptive-keyframes", "emitter-720", "sprite-720", "sprite-atlas-720"].compactMap { id in StudyScenario.all.first { $0.id == id } }
         precondition(!scenarios.isEmpty && (selection == nil || scenarios.count == selection!.count), "Invalid study selection")
         scenario = scenarios[0]
     }
@@ -46,7 +47,7 @@ import os.signpost
     func run(size: CGSize) async {
         UIApplication.shared.isIdleTimerDisabled = true
         if visual {
-            status = "Visual review • same seed on every replay"
+            status = "Visual review • Replay keeps the mix • Shuffle changes it"
             if args.contains("--visual-autoplay") { replay(size: size) }
             return
         }
@@ -135,17 +136,22 @@ import os.signpost
         visualTask?.cancel(); renderer.cancel(); busy = false
         status = "Animation stopped • choose Replay or another experiment"
     }
+    func shuffle(size: CGSize) {
+        visualSeed = visualSeed &+ 1
+        replay(size: size)
+    }
     func replay(size: CGSize) {
         UIApplication.shared.isIdleTimerDisabled = true
         visualTask?.cancel(); renderer.reset()
         let spec = scenarios[visualIndex]; scenario = spec
+        let seed = visualSeed
         visualNote = ""; busy = true; showKeyboard = true; scrollToBottom = false
         visualTask = Task {
             await renderer.prepare(spec)
             guard !Task.isCancelled else { return }
             try? await pause(0.2)
             guard !Task.isCancelled else { return }
-            let stats = renderer.play(spec, burst: spec.burst(size: size, seed: 1001))
+            let stats = renderer.play(spec, burst: spec.burst(size: size, seed: seed))
             status = "\(spec.id) • \(stats["requested_particles"] ?? 0) particles"
             try? await pause(0.25)
             guard !Task.isCancelled else { return }
@@ -165,7 +171,7 @@ import os.signpost
     func note(_ value: String) {
         visualNote = value
         let url = directory.appendingPathComponent("visual-observations.jsonl")
-        let record: [String: Any] = ["scenario": scenario.id, "seed": 1001, "observation": value, "timestamp": Date().timeIntervalSince1970]
+        let record: [String: Any] = ["scenario": scenario.id, "seed": visualSeed, "observation": value, "timestamp": Date().timeIntervalSince1970]
         do {
             var data = try JSONSerialization.data(withJSONObject: record, options: [.sortedKeys]); data.append(10)
             if !FileManager.default.fileExists(atPath: url.path) { try Data().write(to: url) }

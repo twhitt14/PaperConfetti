@@ -15,13 +15,18 @@ struct StudyView: View {
                         .onChange(of: model.visualIndex) { _ in model.replay(size: geometry.size) }
                     HStack {
                         Button("Replay") { model.replay(size: geometry.size) }.accessibilityIdentifier("study-replay")
+                        Button("Shuffle") { model.shuffle(size: geometry.size) }.accessibilityIdentifier("study-shuffle")
                         Button("Next") {
                             model.visualIndex = (model.visualIndex + 1) % model.scenarios.count
                         }.accessibilityIdentifier("study-next")
+                    }.buttonStyle(.bordered)
+                    HStack {
+                        Button("Stop animation") { model.pauseVisual() }
+                            .accessibilityIdentifier("study-stop").disabled(!model.busy)
                         Button("Tap test: \(model.taps)") { model.tap() }.accessibilityIdentifier("study-tap")
                     }.buttonStyle(.bordered)
-                    Button("Stop animation") { model.pauseVisual() }
-                        .accessibilityIdentifier("study-stop").disabled(!model.busy)
+                    Text("Mix \(String(model.visualSeed)) • Replay keeps this mix")
+                        .font(.caption).foregroundStyle(.secondary).accessibilityIdentifier("study-seed")
                     Text("Taps during flight: \(model.activeTaps)").font(.caption).accessibilityIdentifier("study-active-taps")
                 }
                 ScrollViewReader { proxy in

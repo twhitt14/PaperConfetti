@@ -20,6 +20,7 @@ struct StudyScenario: Decodable, Identifiable {
     let atlas: Bool
     let paddedTexture: Bool
     let trilinear: Bool
+    let native3D: Bool?
 
     static let all: [Self] = {
         struct Manifest: Decodable { let schema: Int; let scenarios: [StudyScenario] }
@@ -31,8 +32,9 @@ struct StudyScenario: Decodable, Identifiable {
     }()
     var displayName: String {
         let names = ["paper": "PaperConfetti", "layers": "Adjustable layers",
-                     "emitter": "Native particles", "sprite": atlas ? "SpriteKit atlas" : "SpriteKit",
+                     "emitter": native3D == true ? "Native particles · 3D tilt" : "Native particles · flat", "sprite": atlas ? "SpriteKit atlas" : "SpriteKit",
                      "none": "No confetti"]
+        if id == "adaptive-keyframes" { return "Adjustable layers · adaptive · \(count)" }
         let simple = suites.contains("renderers")
         return simple ? "\(names[renderer] ?? renderer) · \(count)" : id
     }

@@ -38,6 +38,7 @@ jobs:
         run: python3 tools/validate.py
       - name: Validate profiling automation
         run: |
+          swift test --package-path Benchmarks
           python3 -m unittest discover -s tools/tests -v
           python3 tools/profile.py --simulator-smoke
           python3 tools/compare.py --simulator-smoke

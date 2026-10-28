@@ -16,12 +16,26 @@ final class BenchmarkSmokeTests: XCTestCase {
 final class RendererStudyTests: XCTestCase {
     func testAllRenderersCompleteAndCleanUp() {
         let app = XCUIApplication()
-        app.launchArguments = ["--study=paper-720,layers-720,emitter-720,sprite-720,sprite-atlas-720", "--study-rounds=1", "--autostart", "--run-id=study-ui-smoke"]
+        app.launchArguments = ["--study=paper-720,layers-720,emitter-720,emitter-3d-720,sprite-720,sprite-atlas-720", "--study-rounds=1", "--autostart", "--run-id=study-ui-smoke"]
         app.launch()
         let status = app.staticTexts["study-status"]
         XCTAssertTrue(status.waitForExistence(timeout: 10))
         expectation(for: NSPredicate(format: "label == %@", "Comparison saved"), evaluatedWith: status)
-        waitForExpectations(timeout: 70)
+        waitForExpectations(timeout: 85)
+    }
+
+    func testShuffleChangesMixButReplayKeepsIt() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--visual-review", "--study=emitter-3d-720"]
+        app.launch()
+        let shuffle = app.buttons["study-shuffle"]
+        XCTAssertTrue(shuffle.waitForExistence(timeout: 10))
+        let seed = app.staticTexts["study-seed"]
+        XCTAssertTrue(seed.label.contains("1001"))
+        shuffle.tap()
+        XCTAssertTrue(seed.label.contains("1002"))
+        app.buttons["study-replay"].tap()
+        XCTAssertTrue(seed.label.contains("1002"))
     }
 
     func testOpeningAppNormallyShowsVisualReview() {
@@ -52,10 +66,10 @@ final class RendererStudyTests: XCTestCase {
 
     func testAllRendererOverlaysPassThroughRealTapsAndScrolling() {
         let app = XCUIApplication()
-        app.launchArguments = ["--visual-review", "--study=paper-720,layers-720,emitter-720,sprite-720,sprite-atlas-720"]
+        app.launchArguments = ["--visual-review", "--study=paper-720,layers-720,emitter-720,emitter-3d-720,sprite-720,sprite-atlas-720"]
         app.launch()
         XCTAssertTrue(app.buttons["study-replay"].waitForExistence(timeout: 10))
-        for index in 0..<5 {
+        for index in 0..<6 {
             app.buttons["study-replay"].tap()
             // Do not let XCTest wait until the flight ends before performing the interaction.
             app.buttons["study-tap"].coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
@@ -66,7 +80,7 @@ final class RendererStudyTests: XCTestCase {
             scroll.swipeUp()
             scroll.swipeUp()
             XCTAssertTrue(app.staticTexts["study-scroll-end"].isHittable)
-            if index < 4 { app.buttons["study-next"].tap() }
+            if index < 5 { app.buttons["study-next"].tap() }
         }
     }
 }

@@ -91,6 +91,29 @@
       "trilinear": false
     },
     {
+      "renderer": "emitter",
+      "count": 180,
+      "size": 10,
+      "shapes": "festive",
+      "textureScale": 0,
+      "samples": 48,
+      "tumble": true,
+      "flutter": true,
+      "hostMotion": true,
+      "uniformSpeed": false,
+      "prewarm": true,
+      "opaqueProxy": false,
+      "atlas": false,
+      "id": "emitter-3d-180",
+      "suites": [
+        "renderers"
+      ],
+      "sampling": "uniform",
+      "paddedTexture": false,
+      "trilinear": false,
+      "native3D": true
+    },
+    {
       "renderer": "sprite",
       "count": 180,
       "size": 10,
@@ -201,6 +224,29 @@
       "sampling": "uniform",
       "paddedTexture": false,
       "trilinear": false
+    },
+    {
+      "renderer": "emitter",
+      "count": 720,
+      "size": 10,
+      "shapes": "festive",
+      "textureScale": 0,
+      "samples": 48,
+      "tumble": true,
+      "flutter": true,
+      "hostMotion": true,
+      "uniformSpeed": false,
+      "prewarm": true,
+      "opaqueProxy": false,
+      "atlas": false,
+      "id": "emitter-3d-720",
+      "suites": [
+        "renderers"
+      ],
+      "sampling": "uniform",
+      "paddedTexture": false,
+      "trilinear": false,
+      "native3D": true
     },
     {
       "renderer": "sprite",
