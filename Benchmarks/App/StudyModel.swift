@@ -18,6 +18,7 @@ import os.signpost
     let renderer = StudyRenderer()
     let scenarios: [StudyScenario]
     let visual: Bool
+    let emissionProbe = ProcessInfo.processInfo.arguments.contains("--emission-probe")
     private let args = ProcessInfo.processInfo.arguments
     private var results: [[String: Any]] = []
     private var error: String?
@@ -107,6 +108,9 @@ import os.signpost
                     try check()
                     guard renderer.isIdle else { throw BenchmarkModel.Failure("Particles remained active after settling.") }
                     let completion = renderer.completionStats(spec)
+                    if spec.renderer == "emitter" && !args.contains("--native-legacy-clock") && !(completion["native_arm_delay_ms"] is Double) {
+                        throw BenchmarkModel.Failure("Native launch clock never armed.")
+                    }
                     if spec.renderer == "sprite" && ((completion["sprite_particles_started"] as? Int) != spec.count || (completion["sprite_scene_updates"] as? Int ?? 0) == 0) {
                         throw BenchmarkModel.Failure("SpriteKit did not start every requested particle.")
                     }

@@ -5,32 +5,35 @@ import PaperConfetti
 /// grouping lets a few visually different pieces share a nearby flight.
 struct NativeFlightGroup {
     let members: [ConfettiParticle]
+    private let flights: [StudyFlight]
     let duration: Double
     let delay: Double
     let anchors: [Double]
     init(members: [ConfettiParticle]) {
         precondition(!members.isEmpty)
         self.members = members
-        duration = members.map(StudyFlight.duration).max()!
+        let flights = members.map { StudyFlight($0) }
+        self.flights = flights
+        duration = flights.map(\.duration).max()!
         delay = members[0].delay
-        anchors = Array(Set([0, duration] + members.flatMap(StudyFlight.anchors))).sorted()
+        anchors = Array(Set([0, duration] + flights.flatMap(\.anchors))).sorted()
     }
     func position(at age: Double) -> CGPoint {
         var x = 0.0, y = 0.0
-        for p in members {
-            let point = StudyFlight.position(p, at: age); x += point.x; y += point.y
+        for flight in flights {
+            let point = flight.position(at: age); x += point.x; y += point.y
         }
         return CGPoint(x: x / Double(members.count), y: y / Double(members.count))
     }
     func opacity(at age: Double) -> Double {
-        members.reduce(0) { $0 + StudyFlight.opacity($1, at: age) } / Double(members.count)
+        flights.reduce(0) { $0 + $1.opacity(at: age) } / Double(members.count)
     }
 }
 
 enum NativeParticlePlan {
     static let poseCount = 8
     static let maximumMembers = 3
-    static let maximumSampledSeparation = 24.0
+    static let maximumSampledSeparation = 20.0
     static let probeTimes = [0.05, 0.1, 0.2, 0.35, 0.55, 0.8, 1.2, 1.8, 2.5, 3.3, 4.2]
 
     static func poseIndex(for particle: ConfettiParticle) -> Int {

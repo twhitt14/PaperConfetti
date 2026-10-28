@@ -57,6 +57,10 @@ def validate(payload, run_id, phase, cases, rounds, simulator):
         spec = next(c for c in cases if c['id'] == row['scenario'])
         if row.get('requested_particles') != spec['count'] or not row.get('idle_after_settle'):
             raise p.ProfileError('Renderer emitted no particles or failed cleanup')
+        if spec['renderer'] == 'emitter':
+            delay = row.get('native_arm_delay_ms')
+            if row.get('native_staged_clock') is not True or type(delay) not in (int, float) or not math.isfinite(delay) or delay <= 0:
+                raise p.ProfileError('Native launch clock never armed or its timing is unavailable')
         if spec['renderer'] == 'sprite' and (row.get('sprite_particles_started') != spec['count'] or row.get('sprite_scene_updates', 0) < 1):
             raise p.ProfileError('SpriteKit never started the complete population')
         if phase != 'memory' and row.get('callback_count', 0) < 2:
@@ -103,14 +107,14 @@ def write_report(output, receipt, payloads):
     summary = []
     for (phase, name), rows in groups.items():
         summary.append(dict(phase=phase, scenario=name, samples=len(rows),
-            **{key: median(rows, key) for key in ('cpu_ms','setup_ms','first_callback_ms','callback_p99_ms','hitch_count','hitch_ms','max_hitch_ms','launch_hitch_ms','flight_hitch_ms')},
+            **{key: median(rows, key) for key in ('cpu_ms','setup_ms','native_arm_delay_ms','first_callback_ms','callback_p99_ms','hitch_count','hitch_ms','max_hitch_ms','launch_hitch_ms','flight_hitch_ms')},
             settled_mib=median(rows,'footprint_end_bytes') / 1048576,
             peak_sampled_mib=(median(rows,'footprint_peak_sampled_bytes') / 1048576 if median(rows,'footprint_peak_sampled_bytes') is not None else None),
             first_settled_mib=rows[0]['footprint_end_bytes'] / 1048576,
             last_settled_mib=rows[-1]['footprint_end_bytes'] / 1048576))
     receipt['summary'] = summary
     (output / 'report.json').write_text(json.dumps(receipt, indent=2) + '\n')
-    keys = ['phase','scenario','samples','cpu_ms','setup_ms','callback_p99_ms','hitch_count','hitch_ms','max_hitch_ms','launch_hitch_ms','flight_hitch_ms','settled_mib']
+    keys = ['phase','scenario','samples','cpu_ms','setup_ms','native_arm_delay_ms','callback_p99_ms','hitch_count','hitch_ms','max_hitch_ms','launch_hitch_ms','flight_hitch_ms','settled_mib']
     rows = ''.join('<tr>' + ''.join(f'<td>{cell(row[k])}</td>' for k in keys) + '</tr>' for row in summary)
     links = ''
     for recording in receipt.get('recordings', []):
@@ -142,8 +146,8 @@ def write_report(output, receipt, payloads):
 <style>body{{font:15px system-ui;background:#111827;color:#e5e7eb;margin:32px}}a{{color:#67e8f9}}td,th{{text-align:left;padding:10px;border-bottom:1px solid #374151;white-space:nowrap}}table{{border-collapse:collapse}}.table{{overflow:auto}}p{{max-width:1100px;line-height:1.6}}</style>
 <h1>Renderer and shape study</h1><p>{html.escape(receipt['status'])}</p><p>{html.escape(receipt.get('error',''))}</p>
 <p>Warm medians exclude round zero. Cold-textures results are explicitly first-use trials from fresh processes. A one-round smoke run intentionally has no warm summary. Raw measurements retain every trial, texture dimensions/alpha coverage, requested particle counts and interpolation accuracy.</p>
-<p>CPU is whole-process CPU over the complete trial. Setup includes synchronous particle preparation/animation submission, not the later Core Animation commit. Callback p99 is scheduling, <strong>not rendered FPS</strong>. Actual hitch fields require complete, matching Animation Hitches + Points of Interest exports for this process; absent evidence stays unavailable. Hitch duration is unioned within each trial, with launch = first 500ms. It is not Apple's animation-active hitch time ratio. CPU and memory passes run separately; don't compare their CPU with the timing pass.</p>
-<p>The parabolic-v4 candidates give each piece its own seeded rise/fall timing, shape, color and spin. Native particles use one emitter layer per piece; SpriteKit uses a moving node and finite emitter per piece. Both offer flat and independent 3D tilt. Eight cached native starting poses add bitmap memory, listed separately. The shared-flight diagnostic trades individual timing for fewer groups. The released PaperConfetti baseline retains its original physics, so this is an appearance/performance comparison, not identical output. Loads above 2,000 use multiple seeded batches in the benchmark only. Opaque-proxy is diagnostic rectangles. Compare repeated sessions on the same physical device and thermal state.</p>
+<p>CPU is whole-process CPU over the complete trial. Setup includes synchronous particle preparation/animation submission, not the later Core Animation commit. Native arm delay measures from play until the scheduled start of the staged clock, including asynchronous readiness and size-dependent headroom; it is not the first visible frame. Callback p99 is scheduling, <strong>not rendered FPS</strong>. Actual hitch fields require complete, matching Animation Hitches + Points of Interest exports for this process; absent evidence stays unavailable. Hitch duration is unioned within each trial, with launch = first 500ms. It is not Apple's animation-active hitch time ratio. CPU and memory passes run separately; don't compare their CPU with the timing pass.</p>
+<p>The parabolic-v5 soft-edge candidates give each piece its own seeded rise/fall timing, shape, color and spin. A smooth reach tail feathers the old radius boundary without increasing average reach. Native particles use one emitter layer per piece and stage their shared clock before starting; SpriteKit uses a moving node and finite emitter per piece. Both offer flat and independent 3D tilt. Eight cached native starting poses add bitmap memory, listed separately. The shared-flight diagnostic trades individual timing for fewer groups. The released PaperConfetti baseline retains its original physics, so this is an appearance/performance comparison, not identical output. Loads above 2,000 use multiple seeded batches in the benchmark only. Opaque-proxy is diagnostic rectangles. Compare repeated sessions on the same physical device and thermal state.</p>
 <div class="table"><table><tr>{''.join(f'<th>{k}</th>' for k in keys)}</tr>{rows}</table></div>
 <h2>Memory trends</h2><ul>{memory}</ul><p>Whole-process footprint, including framework caches. Use Allocations to attribute retained objects. Cancellation and natural completion are both checked.</p>
 <h2>Texture and trajectory audit</h2><p>First trial per scenario; computed outside timing. Dimensions and bytes describe CPU CGImage backing, not total GPU allocations. Alpha fraction is nontransparent pixels divided by bitmap area. Padding changes that denominator. Error compares sampled/interpolated position and opacity with the underlying physics. CAEmitterLayer audits interpolation and any diagnostic grouping deviation from the new individual paths; native birth offsets, drift and tilt are excluded. SpriteKit evaluates the same analytic flight on each scene update: its interpolation fields are unavailable, not measured zeros. Scene updates/started-particle checks prove scheduling, not actual GPU frame delivery.</p>

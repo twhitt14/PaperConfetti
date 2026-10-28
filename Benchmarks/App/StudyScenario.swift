@@ -46,6 +46,7 @@ struct StudyScenario: Decodable, Identifiable {
         return copy
     }
     var shapeSet: [ConfettiShape] {
+        if ProcessInfo.processInfo.arguments.contains("--emission-probe") { return [.circle] }
         if shapes == "festive" { return ConfettiShape.festive }
         if shapes == "classic" { return ConfettiShape.classic }
         return ConfettiShape.allCases.filter { String(describing: $0) == shapes }
@@ -59,6 +60,12 @@ struct StudyScenario: Decodable, Identifiable {
         fallSpeedRange: uniformSpeed ? 1...1 : 0.75...1.35)
         if !tumble { burst.motion.tumble = 0...0 }
         if !flutter { burst.motion.flutter = 0 }
+        if ProcessInfo.processInfo.arguments.contains("--emission-probe") {
+            burst.radius = 2; burst.fallSpeedRange = 1...1
+            burst.motion.flutter = 0; burst.motion.tumble = 0...0; burst.motion.spin = 0...0
+            burst.motion.launchDuration = 0.3...0.3
+            for i in burst.cannons.indices { burst.cannons[i].spread = 0 }
+        }
         return burst
     }
 }

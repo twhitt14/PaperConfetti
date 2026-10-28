@@ -78,7 +78,21 @@ struct StudyView: View {
                 }
             }
             .padding(20).frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color(uiColor: .systemGroupedBackground))
+            .opacity(model.emissionProbe ? 0 : 1)
+            .background(model.emissionProbe ? Color.black : Color(uiColor: .systemGroupedBackground))
+            .overlay {
+                if model.emissionProbe {
+                    Color.clear.accessibilityElement().accessibilityLabel("Emission probe surface")
+                        .accessibilityIdentifier("probe-surface").allowsHitTesting(false)
+                }
+            }
+            .overlay(alignment: .top) {
+                if model.emissionProbe {
+                    Button("Fire probe") { model.replay(size: geometry.size) }
+                        .buttonStyle(.plain).foregroundStyle(.white).padding(.top, 24)
+                        .accessibilityIdentifier("probe-fire")
+                }
+            }
             .overlay { StudyRendererHost(view: model.renderer).allowsHitTesting(false).accessibilityHidden(true) }
             .task { await model.run(size: geometry.size) }
             .onDisappear { model.stop() }

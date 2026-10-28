@@ -84,6 +84,16 @@ class StudyTests(unittest.TestCase):
         bad=copy.deepcopy(data);bad['rows']*=2
         with self.assertRaises(study.p.ProfileError): study.validate(bad,'r','timing',cases,1,False)
 
+    def test_native_requires_a_finite_staged_start_receipt(self):
+        cases=study.select_cases('renderers','emitter-3d-720')
+        data=self.payload(); row=data['rows'][0]
+        row.update(scenario='emitter-3d-720', native_staged_clock=True, native_arm_delay_ms=70)
+        study.validate(data,'r','timing',cases,1,False)
+        for key,value in [('native_staged_clock',False),('native_arm_delay_ms',None),
+                          ('native_arm_delay_ms',float('nan')),('native_arm_delay_ms',0)]:
+            bad=copy.deepcopy(data);bad['rows'][0][key]=value
+            with self.assertRaises(study.p.ProfileError): study.validate(bad,'r','timing',cases,1,False)
+
     def test_sprite_requires_population_and_scene_update_evidence(self):
         cases=study.select_cases('renderers','sprite-3d-720')
         data=self.payload(); row=data['rows'][0]
