@@ -203,3 +203,26 @@ Local checks used Xcode 27.2 (27B48) and the dedicated PaperConfetti Example sim
 The deterministic motion audit (720 particles, seed 1000) measured maximum sampled-trajectory error of 33.712 points with 49 uniform samples, 55.542 points with 25 uniform samples, and 0.534 points with 26–41 adaptive samples. This quantifies approximation of the underlying physics, **not frame delivery or a device speed improvement**. The adaptive candidate remains benchmark-only pending physical CPU/hitch and visual comparison. Evidence: `.artifacts/study-20261027T083201Z-50f20e/`.
 
 The physical iPhone was disconnected during this work. No new physical renderer ranking, GPU result, or production optimization is claimed. Run `python3 tools/compare.py --suite all` on the connected phone to collect that evidence. The previous physical ConfettiSwiftUI comparison remains independently documented above.
+
+## Device start-transfer recovery — October 28, 2026
+
+The full comparison command exposed an intermittent CoreDevice startup failure:
+`Failed to retrieve the file node for Documents/start-…`. Both benchmark modes
+removed the start file as soon as it appeared, racing CoreDevice's final transfer
+verification. They now wait for the complete matching run ID and leave the tiny,
+unique receipt intact. Partial or stale contents do not start playback. No
+package rendering code, API, dependency, or version changed.
+
+- The optimized benchmark app built and installed on the physical iPhone.
+- Five consecutive device launches completed their start transfers and control
+  trials; each receipt was read back after playback and still matched its run ID.
+  Evidence: `.artifacts/startup-regression-20261028T000743/verification.json`.
+- All 22 existing Python runner/parser tests passed.
+- The exact `python3 tools/compare.py --suite all` command was restarted with the
+  fix under `.artifacts/study-20261028T061131Z-d9654e/`. Its first nine timing
+  trials had complete process-attributed Instruments markers; consult that
+  run's report for subsequent batch status, rather than treating app completion
+  or saved measurements alone as proof that all trace evidence is available.
+- The earlier investigative run retained independent samples, but its second
+  trace omitted four early trial markers. Hitch attribution correctly remained
+  unavailable for that batch; no zero-hitch or renderer-ranking claim is made.

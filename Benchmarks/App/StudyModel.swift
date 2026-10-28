@@ -54,11 +54,14 @@ import os.signpost
             if !args.contains("--autostart") {
                 let marker = directory.appendingPathComponent("start-\(runID)")
                 var waits = 0
-                while !FileManager.default.fileExists(atPath: marker.path) {
+                while (try? String(contentsOf: marker, encoding: .utf8)) != runID {
                     try await pause(0.25); waits += 1
                     if waits > 480 { throw BenchmarkModel.Failure("Instruments did not start.") }
                 }
-                try FileManager.default.removeItem(at: marker)
+                // CoreDevice may still be verifying its transfer after this read.
+                // Keep the unique receipt: removing it here races `devicectl copy`
+                // and reports a missing file even though playback already started.
+                // Matching the complete run ID also rejects partial/stale transfers.
             }
             try await pause(1)
             for round in 0..<rounds {

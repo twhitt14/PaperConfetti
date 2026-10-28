@@ -63,11 +63,14 @@ struct Scenario {
                 let start = directory.appendingPathComponent("start-\(runID)")
                 // No polling or cross-device traffic during an actual measurement.
                 var waits = 0
-                while !FileManager.default.fileExists(atPath: start.path) {
+                while (try? String(contentsOf: start, encoding: .utf8)) != runID {
                     try await pause(0.25); waits += 1
                     if waits > 480 { throw Failure("The recorder did not start within two minutes.") }
                 }
-                try FileManager.default.removeItem(at: start)
+                // CoreDevice may still be verifying its transfer after this read.
+                // Keep the unique receipt: removing it here races `devicectl copy`
+                // and reports a missing file even though playback already started.
+                // Matching the complete run ID also rejects partial/stale transfers.
             }
             try await pause(1)
             if pass == "memory" { try await memoryRun(size: size) }
