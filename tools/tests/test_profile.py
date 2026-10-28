@@ -4,6 +4,8 @@ from pathlib import Path
 import tempfile
 import subprocess
 import unittest
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from unittest.mock import patch, Mock
 
 SPEC = importlib.util.spec_from_file_location('profile_suite', Path(__file__).resolve().parents[1] / 'profile.py')

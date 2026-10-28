@@ -6,7 +6,6 @@ No App Store credentials, upload, or changes to the library's dependencies.
 import argparse
 import ctypes
 import datetime as dt
-import fcntl
 import html
 import json
 from pathlib import Path
@@ -18,6 +17,7 @@ import sys
 import time
 import uuid
 import xml.etree.ElementTree as ET
+from run_lock import RunLock, RunLockError
 
 ROOT = Path(__file__).resolve().parents[1]
 PROJECT = ROOT / 'Benchmarks/PaperConfettiBenchmarks.xcodeproj'
@@ -447,11 +447,7 @@ def main():
     parser.add_argument('--simulator-smoke', action='store_true', help='Validate automation only, on the dedicated simulator; no performance claim or Instruments recordings')
     args = parser.parse_args()
     ARTIFACTS.mkdir(exist_ok=True)
-    with (ARTIFACTS / 'profile.lock').open('w') as lock:
-        try:
-            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except BlockingIOError:
-            raise ProfileError('Another profiling run is using the benchmark app. Let it finish first.')
+    with RunLock(ROOT, mode='original profiling suite'):
         devices = []
         if not args.simulator_smoke or args.list_devices:
             inventory_file = ARTIFACTS / 'profile-devices.json'
@@ -546,6 +542,6 @@ def main():
 if __name__ == '__main__':
     try:
         main()
-    except (ProfileError, KeyboardInterrupt) as error:
-        print(f'\nProfiling stopped: {error or "interrupted"}', file=sys.stderr)
+    except (ProfileError, RunLockError, KeyboardInterrupt) as error:
+        print(f'\nProfiling stopped: {str(error) or "interrupted"}', file=sys.stderr)
         sys.exit(1)

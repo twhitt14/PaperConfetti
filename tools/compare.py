@@ -2,7 +2,6 @@
 """Controlled PaperConfetti renderer/factor study. See Documentation/RENDERER_STUDY.md."""
 import argparse
 import datetime as dt
-import fcntl
 import hashlib
 import html
 import json
@@ -15,6 +14,7 @@ import uuid
 
 import profile as p
 import hitches
+from run_lock import RunLock, RunLockError
 
 MANIFEST = p.ROOT / 'Benchmarks/Study.json'
 
@@ -140,10 +140,10 @@ def write_report(output, receipt, payloads):
 <h1>Renderer and shape study</h1><p>{html.escape(receipt['status'])}</p><p>{html.escape(receipt.get('error',''))}</p>
 <p>Warm medians exclude round zero. Cold-textures results are explicitly first-use trials from fresh processes. A one-round smoke run intentionally has no warm summary. Raw measurements retain every trial, texture dimensions/alpha coverage, requested particle counts and interpolation accuracy.</p>
 <p>CPU is whole-process CPU over the complete trial. Setup includes synchronous particle preparation/animation submission, not the later Core Animation commit. Callback p99 is scheduling, <strong>not rendered FPS</strong>. Actual hitch fields require complete, matching Animation Hitches + Points of Interest exports for this process; absent evidence stays unavailable. Hitch duration is unioned within each trial, with launch = first 500ms. It is not Apple's animation-active hitch time ratio. CPU and memory passes run separately; don't compare their CPU with the timing pass.</p>
-<p>Native CAEmitterLayer and SpriteKit use ballistic motion and may leave the viewport sooner; they do not reproduce PaperConfetti's 3D tumble/hover/fade. CAEmitterLayer counts are rate-based estimates; SpriteKit uses finite requested counts. All retain the same requested shape/color populations, points-sized images and five launch positions. This is an appearance/performance tradeoff, not proof that a renderer is faster for identical output. Opaque-proxy is diagnostic rectangles, not a proposed design. Compare repeated sessions on the same physical device and thermal state.</p>
+<p>Native CAEmitterLayer now follows shared PaperConfetti flight/fade curves with small horizontal drift and 2D spin; it does not reproduce independent 3D tumble. SpriteKit retains ballistic motion and may leave the viewport sooner. CAEmitterLayer counts are rate-based estimates; SpriteKit uses finite requested counts. All retain the same requested shape/color populations, points-sized images and five launch positions. This is an appearance/performance tradeoff, not proof that a renderer is faster for identical output. Opaque-proxy is diagnostic rectangles, not a proposed design. Compare repeated sessions on the same physical device and thermal state.</p>
 <div class="table"><table><tr>{''.join(f'<th>{k}</th>' for k in keys)}</tr>{rows}</table></div>
 <h2>Memory trends</h2><ul>{memory}</ul><p>Whole-process footprint, including framework caches. Use Allocations to attribute retained objects. Cancellation and natural completion are both checked.</p>
-<h2>Texture and trajectory audit</h2><p>First trial per scenario; computed outside timing. Dimensions and bytes describe CPU CGImage backing, not total GPU allocations. Alpha fraction is nontransparent pixels divided by bitmap area. Padding changes that denominator. Error compares sampled/interpolated position and opacity with the underlying physics. Native emitter trajectories differ and are not audited by this calculation.</p>
+<h2>Texture and trajectory audit</h2><p>First trial per scenario; computed outside timing. Dimensions and bytes describe CPU CGImage backing, not total GPU allocations. Alpha fraction is nontransparent pixels divided by bitmap area. Padding changes that denominator. Error compares sampled/interpolated position and opacity with the underlying physics. CAEmitterLayer audits its shared cohort paths; native drift and 2D spin are excluded. SpriteKit ballistic paths are not audited.</p>
 <div class="table"><table><tr><th>Scenario</th><th>Images</th><th>Bytes</th><th>Max width px</th><th>Max height px</th><th>Nonzero-alpha fraction</th><th>Min samples</th><th>Max samples</th><th>Position error pt</th><th>Opacity error</th></tr>{audit_rows}</table></div>
 <h2>Recordings</h2><ul>{links}</ul><p>Every trace is a bounded chunk. Open it in Instruments, locate “Renderer study” in Points of Interest, then inspect the Animation Hitches, commit, render-server and GPU tracks. Inspect render costs even if process CPU is low.</p>
 <p><a href="report.json">Full provenance and summary</a> · <a href="Study.json">Exact scenario matrix</a></p>''')
@@ -159,18 +159,25 @@ def main():
     parser.add_argument('--device'); parser.add_argument('--team')
     parser.add_argument('--list', action='store_true')
     parser.add_argument('--simulator-smoke', action='store_true')
-    parser.add_argument('--visual-review', action='store_true', help='Install/open hands-on replay mode, without Instruments')
-    parser.add_argument('--collect-visual', action='store_true', help='Copy saved subjective observations from the installed app, without rebuilding')
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument('--visual-review', action='store_true', help='Install/open hands-on replay mode, without Instruments')
+    mode.add_argument('--collect-visual', action='store_true', help='Copy saved subjective observations from the installed app, without rebuilding')
+    parser.add_argument('--restart', action='store_true', help='Stop an existing repository-owned run before starting this one')
+    mode.add_argument('--stop', action='store_true', help='Stop the active comparison without starting another')
     args = parser.parse_args()
-    cases = select_cases(args.suite, args.only)
+    cases = [] if args.stop else select_cases(args.suite, args.only)
+    if args.visual_review and not args.only and args.suite == 'renderers':
+        cases = select_cases('all', 'emitter-720,paper-720,layers-720,sprite-720,sprite-atlas-720')
     if args.list:
         for c in cases:
             print(f'{c["id"]:24} {c["renderer"]:8} {c["count"]:3} particles; {c["shapes"]}; {c["size"]}pt; texture scale {c["textureScale"] or "device"}')
         return
     p.ARTIFACTS.mkdir(exist_ok=True)
-    with (p.ARTIFACTS / 'profile.lock').open('w') as lock:
-        try: fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except BlockingIOError: raise p.ProfileError('Another profiling run owns the benchmark app.')
+    with RunLock(p.ROOT, restart=args.restart or args.stop, interactive=args.visual_review,
+                 mode='visual review' if args.visual_review else 'comparison') as lock:
+        if args.stop:
+            print('Comparison stopped. Completed results are preserved.' if lock.replaced else 'No comparison is running.', flush=True)
+            return
         team = None
         if args.simulator_smoke:
             import validate as validator
@@ -209,6 +216,7 @@ def main():
             if team: settings.write_text(json.dumps({'team':team},indent=2)+'\n')
             if args.visual_review:
                 runner.launch(uuid.uuid4().hex, 'visual')
+                print('Visual Review is open on your device. Use Replay, Next, or the Experiment menu. No performance recording is running.', flush=True)
                 receipt['status'] = 'Visual review opened — replay, switch variants, and record Smooth/Launch hitch/Flight hitch'
                 keep_open = True
                 return
@@ -271,5 +279,5 @@ def main():
 
 if __name__=='__main__':
     try: main()
-    except (p.ProfileError, KeyboardInterrupt) as error:
-        print(f'Comparison stopped: {error or "interrupted"}',file=sys.stderr); sys.exit(1)
+    except (p.ProfileError, RunLockError, KeyboardInterrupt) as error:
+        print(f'Comparison stopped: {str(error) or "interrupted"}',file=sys.stderr); sys.exit(1)

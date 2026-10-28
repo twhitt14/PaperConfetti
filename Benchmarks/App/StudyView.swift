@@ -10,16 +10,18 @@ struct StudyView: View {
                 Text(model.status).font(.caption.monospaced()).accessibilityIdentifier("study-status")
                 if model.visual {
                     Picker("Experiment", selection: $model.visualIndex) {
-                        ForEach(model.scenarios.indices, id: \.self) { index in Text(model.scenarios[index].id).tag(index) }
+                        ForEach(model.scenarios.indices, id: \.self) { index in Text(model.scenarios[index].displayName).tag(index) }
                     }.pickerStyle(.menu).accessibilityIdentifier("study-picker")
+                        .onChange(of: model.visualIndex) { _ in model.replay(size: geometry.size) }
                     HStack {
                         Button("Replay") { model.replay(size: geometry.size) }.accessibilityIdentifier("study-replay")
                         Button("Next") {
                             model.visualIndex = (model.visualIndex + 1) % model.scenarios.count
-                            model.replay(size: geometry.size)
                         }.accessibilityIdentifier("study-next")
                         Button("Tap test: \(model.taps)") { model.tap() }.accessibilityIdentifier("study-tap")
                     }.buttonStyle(.bordered)
+                    Button("Stop animation") { model.pauseVisual() }
+                        .accessibilityIdentifier("study-stop").disabled(!model.busy)
                     Text("Taps during flight: \(model.activeTaps)").font(.caption).accessibilityIdentifier("study-active-taps")
                 }
                 ScrollViewReader { proxy in

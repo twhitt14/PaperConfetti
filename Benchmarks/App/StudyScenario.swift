@@ -29,6 +29,13 @@ struct StudyScenario: Decodable, Identifiable {
               manifest.schema == 1 else { fatalError("Missing or invalid Study.json") }
         return manifest.scenarios
     }()
+    var displayName: String {
+        let names = ["paper": "PaperConfetti", "layers": "Adjustable layers",
+                     "emitter": "Native particles", "sprite": atlas ? "SpriteKit atlas" : "SpriteKit",
+                     "none": "No confetti"]
+        let simple = suites.contains("renderers")
+        return simple ? "\(names[renderer] ?? renderer) · \(count)" : id
+    }
     var shapeSet: [ConfettiShape] {
         if shapes == "festive" { return ConfettiShape.festive }
         if shapes == "classic" { return ConfettiShape.classic }

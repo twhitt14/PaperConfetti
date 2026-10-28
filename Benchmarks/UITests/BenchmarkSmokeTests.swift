@@ -24,6 +24,32 @@ final class RendererStudyTests: XCTestCase {
         waitForExpectations(timeout: 70)
     }
 
+    func testOpeningAppNormallyShowsVisualReview() {
+        let app = XCUIApplication()
+        app.launch()
+        XCTAssertTrue(app.buttons["study-replay"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["study-picker"].label.contains("Native particles"))
+    }
+
+    func testVisualReviewCanStopReplayAndSwitchAutomatically() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--visual-review", "--study=emitter-720,paper-720"]
+        app.launch()
+        let replay = app.buttons["study-replay"]
+        XCTAssertTrue(replay.waitForExistence(timeout: 10))
+        replay.tap()
+        app.buttons["study-stop"].coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        XCTAssertTrue(app.staticTexts["study-status"].label.contains("Animation stopped"))
+        replay.tap()
+        app.buttons["study-tap"].coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        XCTAssertEqual(app.staticTexts["study-active-taps"].label, "Taps during flight: 1")
+        app.buttons["study-next"].tap()
+        expectation(for: NSPredicate(format: "label BEGINSWITH %@", "paper-720"), evaluatedWith: app.staticTexts["study-status"])
+        waitForExpectations(timeout: 5)
+        app.buttons["study-tap"].coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        XCTAssertEqual(app.staticTexts["study-active-taps"].label, "Taps during flight: 2")
+    }
+
     func testAllRendererOverlaysPassThroughRealTapsAndScrolling() {
         let app = XCUIApplication()
         app.launchArguments = ["--visual-review", "--study=paper-720,layers-720,emitter-720,sprite-720,sprite-atlas-720"]

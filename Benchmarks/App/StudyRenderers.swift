@@ -122,14 +122,16 @@ import PaperConfetti
         }
         let work = DispatchWorkItem { [weak self] in self?.cancel() }
         removal = work
-        // Native systems use the same bounded lifetime, but intentionally have their own ballistic motion.
+        // Include the brief native birth window; cancellation still removes every layer/node.
         let lifetime = (particles.map(\.endTime).max() ?? 0) + 0.25
         DispatchQueue.main.asyncAfter(deadline: .now() + lifetime, execute: work)
         lastStats = ["setup_ms": (CACurrentMediaTime() - start) * 1000,
                      "physics_ms": (physicsEnd - start) * 1000, "texture_lookup_ms": (textureEnd - physicsEnd) * 1000,
                      "requested_particles": particles.count, "particle_layers": spec.renderer == "layers" ? particles.count : 0,
                      "submitted_position_samples": submittedSampleCount,
-                     "native_count_is_estimate": spec.renderer == "emitter"]
+                     "native_count_is_estimate": spec.renderer == "emitter",
+                     "native_motion_model": spec.renderer == "emitter" ? "shared-flight-v2" : spec.renderer == "sprite" ? "ballistic-v1" : "paper-physics",
+                     "emitter_cohorts": spec.renderer == "emitter" ? (particlesView.layer.sublayers?.count ?? 0) : 0]
         return lastStats
     }
     private func index(_ p: ConfettiParticle, _ s: StudyScenario) -> Int { p.color * s.shapeSet.count + s.shapeSet.firstIndex(of: p.shape)! }
@@ -177,28 +179,61 @@ import PaperConfetti
         let groups = Dictionary(grouping: particles) { "\($0.delay)|\($0.shape.rawValue)|\($0.color)" }
         return groups.keys.sorted().map { groups[$0]! }
     }
+    private func nativeCohorts(_ particles: [ConfettiParticle]) -> [[ConfettiParticle]] {
+        groups(particles).flatMap { group in
+            stride(from: 0, to: group.count, by: 4).map { Array(group[$0..<min($0 + 4, group.count)]) }
+        }
+    }
     private func emitters(_ particles: [ConfettiParticle], textures: [CGImage], spec: StudyScenario) {
-        let start = CACurrentMediaTime()
-        for group in groups(particles) {
+        let start = particlesView.layer.convertTime(CACurrentMediaTime(), from: nil)
+        CATransaction.begin(); CATransaction.setDisableActions(true)
+        for group in nativeCohorts(particles) {
             let p = group[0]
+            // A small cohort shares one flight, rather than creating a layer and four
+            // animations for every particle. Native cells still render/spin independently.
+            // Moving the entire layer moves its live particles; emitterPosition alone
+            // would only move the birthplace of particles emitted later.
             let emitter = CAEmitterLayer()
-            emitter.emitterPosition = CGPoint(x: p.x, y: p.y)
-            emitter.renderMode = .unordered; emitter.seed = UInt32(p.shape.rawValue * 100 + p.color + 1)
+            emitter.emitterPosition = .zero
+            emitter.emitterShape = .rectangle; emitter.emitterSize = CGSize(width: 10, height: 4)
+            emitter.renderMode = .unordered
+            emitter.seed = UInt32(truncatingIfNeeded: p.phase.bitPattern ^ p.delay.bitPattern)
             emitter.beginTime = start + p.delay
+            emitter.opacity = 0
             let cell = CAEmitterCell()
             cell.contents = textures[index(p, spec)]; cell.contentsScale = scale(spec)
             cell.birthRate = Float(group.count) / 0.06; cell.duration = 0.06
-            cell.lifetime = Float(p.lifetime)
-            // Rise to ~130pt in ~0.6s; faster-falling shape groups have greater gravity.
-            cell.velocity = 430; cell.velocityRange = 30
-            cell.emissionLongitude = -.pi / 2; cell.emissionRange = .pi * 40 / 180
-            cell.yAcceleration = 710 * CGFloat(p.fallSpeed)
+            cell.lifetime = Float(p.lifetime + 0.06)
+            // The shared path supplies launch, deceleration and shape-specific rain.
+            // Small native drift separates the cohort without the old runaway gravity
+            // or continued sideways spray. No private CAEmitterBehavior APIs are used.
+            cell.velocity = 0
+            cell.velocityRange = CGFloat(p.flutter * 1.2)
+            cell.emissionLongitude = 0; cell.emissionRange = 0
+            cell.xAcceleration = 0; cell.yAcceleration = 0
             cell.scale = 1; cell.scaleRange = 0.2
-            cell.spin = 5; cell.spinRange = 3
-            cell.alphaSpeed = -Float(1 / p.lifetime)
+            cell.spin = CGFloat(p.spin); cell.spinRange = 1.5
             emitter.emitterCells = [cell]
+
+            let track = StudyTrack(particle: p, spec: spec, forceAdaptive: true)
+            submittedSampleCount += track.times.count
+            let flight = CAKeyframeAnimation(keyPath: "position")
+            flight.values = track.positions.map { NSValue(cgPoint: $0) }
+            flight.keyTimes = track.times.map { NSNumber(value: $0 / p.lifetime) }
+            flight.calculationMode = .linear
+            let alpha = CAKeyframeAnimation(keyPath: "opacity")
+            alpha.values = track.opacities; alpha.keyTimes = flight.keyTimes
+            let animation = CAAnimationGroup()
+            animation.animations = [flight, alpha]
+            animation.duration = p.lifetime
+            animation.animations?.forEach { $0.duration = p.lifetime }
+            // Explicit local zero: a literal zero is Core Animation's "start now" default.
+            animation.beginTime = 0.000001
+            animation.timingFunction = CAMediaTimingFunction(name: .linear)
             particlesView.layer.addSublayer(emitter)
+            emitter.add(animation, forKey: "shared-flight")
         }
+        CATransaction.commit()
     }
     private func spriteEmitters(_ particles: [ConfettiParticle], textures: [CGImage], spec: StudyScenario) {
         guard let scene else { preconditionFailure("SpriteKit scene was not prepared") }
@@ -241,9 +276,11 @@ import PaperConfetti
         }
         var maxPositionError = 0.0, maxOpacityError = 0.0
         var sampleCounts: [Int] = []
-        if spec.renderer == "layers" || spec.renderer == "paper" {
-            for p in burst.particles(paletteCount: 3) {
-                let track = StudyTrack(particle: p, spec: spec)
+        if ["layers", "paper", "emitter"].contains(spec.renderer) {
+            let all = burst.particles(paletteCount: 3)
+            let audited = spec.renderer == "emitter" ? nativeCohorts(all).map { $0[0] } : all
+            for p in audited {
+                let track = StudyTrack(particle: p, spec: spec, forceAdaptive: spec.renderer == "emitter")
                 sampleCounts.append(track.times.count)
                 var lo = 0
                 for step in 0...960 {
@@ -257,7 +294,8 @@ import PaperConfetti
                 }
             }
         }
-        return ["textures": details, "texture_bytes": textures.reduce(0) { $0 + $1.bytesPerRow * $1.height },
+        return ["trajectory_audit_scope": spec.renderer == "emitter" ? "shared-cohort-path-excludes-native-drift" : "individual-particles",
+                "textures": details, "texture_bytes": textures.reduce(0) { $0 + $1.bytesPerRow * $1.height },
                 "minimum_track_samples": sampleCounts.min() as Any? ?? NSNull(), "maximum_track_samples": sampleCounts.max() as Any? ?? NSNull(),
                 "position_interpolation_max_error_points": sampleCounts.isEmpty ? NSNull() : maxPositionError as Any,
                 "opacity_interpolation_max_error": sampleCounts.isEmpty ? NSNull() : maxOpacityError as Any]
@@ -277,8 +315,8 @@ private struct StudyTrack {
     let times: [Double]
     let positions: [CGPoint]
     let opacities: [Double]
-    init(particle p: ConfettiParticle, spec: StudyScenario) {
-        if spec.sampling == "adaptive" {
+    init(particle p: ConfettiParticle, spec: StudyScenario, forceAdaptive: Bool = false) {
+        if forceAdaptive || spec.sampling == "adaptive" {
             var times: [Double] = [0]
             func split(_ a: Double, _ b: Double, depth: Int) {
                 let start = p.position(at: a), end = p.position(at: b)

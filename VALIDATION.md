@@ -226,3 +226,53 @@ package rendering code, API, dependency, or version changed.
 - The earlier investigative run retained independent samples, but its second
   trace omitted four early trial markers. Hitch attribution correctly remained
   unavailable for that batch; no zero-hitch or renderer-ranking claim is made.
+
+## Interactive restart and native emitter motion — October 28, 2026
+
+Visual Review now offers to stop the active repository-owned runner, waits for
+its cleanup, and opens a fresh app session. `--restart` explicitly authorizes the
+same handoff without a prompt; `--stop` stops without launching another run.
+The original suite shares the ownership lock. PID/start-time/repository checks
+and the existing lock inode prevent terminating unrelated processes or starting
+two runners together. Opening the installed app without runner arguments now
+enters Visual Review, starting with Native particles at 720.
+
+The benchmark CAEmitterLayer implementation changed from constant-gravity
+ballistic flight to shared PaperConfetti position/fade tracks. Cohorts contain at
+most four particles, with independent native spin and small horizontal drift.
+This preserves the launch, deceleration, shape-specific descent and late fade,
+while retaining fewer layers/animations than the per-particle implementation.
+It does not reproduce individual 3D tumble. This is **benchmark-only**; package
+source, API, dependencies and versions remain unchanged. Old native-emitter
+performance results do not establish the new implementation's performance.
+
+Validation:
+
+- 30 Python tests passed, including decline/accept/restart, stale receipts,
+  reused PIDs, other repositories, changed owners and cleanup timeouts.
+- A real simulator comparison was interrupted through the new interactive
+  `--visual-review` prompt. The old run exited, its results remained saved,
+  and the new session opened without sharing the lock/device with it.
+- `swift test`: 8 tests passed. The required iOS package/example/Release/DocC
+  checks passed under `.artifacts/validation-20261028T065314Z/`.
+- Six renderer smoke trials and six benchmark UI tests passed under
+  `.artifacts/study-20261028T065412Z-04e334/`, covering all renderer paths,
+  cleanup, real taps during flight, scrolling, and stop/replay/switching.
+- After adding direct app entry, two focused UI tests passed under
+  `.artifacts/VisualReviewEntry-20261028.xcresult`, including normal launch
+  into the native comparison and another stop/replay/switch check.
+- The final benchmark compiled in Release for generic physical iOS with signing
+  disabled; evidence: `.artifacts/emitter-review-device-compile.log`.
+- The 720-particle fixture used 257 native cohorts and 8,836 shared position
+  samples. Maximum shared-path interpolation error was 0.532 points; opacity
+  error was 0.00391. These are numerical diagnostics, **not FPS or GPU results**.
+- Launch, apex, descent and cleared-overlay screenshots were inspected under
+  `.artifacts/emitter-motion-20261028/` and
+  `.artifacts/emitter-motion-final-20261028/`.
+
+The earlier full device study was stopped at the owner's request. Completed
+batches remain under `.artifacts/study-20261028T061131Z-d9654e/`; incomplete
+marker evidence remains unavailable. The iPhone disconnected before the new
+visual build could be installed. Reconnect/unlock it and run
+`python3 tools/compare.py --visual-review` to install and test the new motion.
+No new physical performance improvement is claimed.

@@ -89,3 +89,8 @@ References: [Apple: improving responsiveness](https://developer.apple.com/docume
 ## Renderer alternatives and shape-cost investigation
 
 Use [the renderer study](RENDERER_STUDY.md) for the expanded matrix and per-trial Instruments hitch attribution. `tools/profile.py` preserves this original ConfettiSwiftUI comparison. `tools/compare.py` adds controlled fancy-shape comparisons and a hands-on visual mode; it reuses the same signing, recording, cleanup and device-selection machinery. Do not compare totals from different protocols as if their visual workloads were identical.
+
+To stop the original suite and switch to the interactive renderer comparison, run
+`python3 tools/compare.py --visual-review` and answer `y` to the restart question.
+Use `python3 tools/compare.py --stop` to stop without starting another session.
+Completed recordings remain saved; the interrupted recording is marked incomplete.

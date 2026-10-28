@@ -28,10 +28,10 @@ import os.signpost
     private func value(_ prefix: String) -> String? { args.first { $0.hasPrefix(prefix) }.map { String($0.dropFirst(prefix.count)) } }
     init() {
         let arguments = ProcessInfo.processInfo.arguments
-        visual = arguments.contains("--visual-review")
+        visual = arguments.contains("--visual-review") || !arguments.contains(where: { $0.hasPrefix("--run-id=") })
         let selection = arguments.first { $0.hasPrefix("--study=") }.map { String($0.dropFirst(8)).split(separator: ",").map(String.init) }
         scenarios = selection.map { ids in ids.compactMap { id in StudyScenario.all.first { $0.id == id } } }
-            ?? StudyScenario.all.filter { $0.suites.contains("renderers") && $0.count == 720 }
+            ?? ["emitter-720", "paper-720", "layers-720", "sprite-720", "sprite-atlas-720"].compactMap { id in StudyScenario.all.first { $0.id == id } }
         precondition(!scenarios.isEmpty && (selection == nil || scenarios.count == selection!.count), "Invalid study selection")
         scenario = scenarios[0]
     }
@@ -131,7 +131,12 @@ import os.signpost
         try JSONSerialization.data(withJSONObject: payload, options: [.prettyPrinted, .sortedKeys])
             .write(to: directory.appendingPathComponent("results-\(runID).json"), options: .atomic)
     }
+    func pauseVisual() {
+        visualTask?.cancel(); renderer.cancel(); busy = false
+        status = "Animation stopped • choose Replay or another experiment"
+    }
     func replay(size: CGSize) {
+        UIApplication.shared.isIdleTimerDisabled = true
         visualTask?.cancel(); renderer.reset()
         let spec = scenarios[visualIndex]; scenario = spec
         visualNote = ""; busy = true; showKeyboard = true; scrollToBottom = false
