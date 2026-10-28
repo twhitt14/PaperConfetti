@@ -186,13 +186,13 @@ final class NativeEmissionTests: XCTestCase {
         }
         XCTAssertEqual(visible.count, 5760, "Check actual occupied pixels, not requested native birth rates")
     }
-    func testLegacyClockControlReproducesMissingFirstCannon() {
+    func testExpiredLegacyBirthWindowIsMissingBesideLiveReference() {
         let app = XCUIApplication()
         app.launchArguments = ["--visual-review", "--emission-probe", "--study=stress-emitter-5760", "--native-legacy-clock", "--native-stall-ms=150"]
         app.launch()
         XCTAssertTrue(app.buttons["probe-fire"].waitForExistence(timeout: 10))
         let visible = fireAndObserve(app, name: "Legacy negative control")
         XCTAssertFalse(visible.contains(0), "The negative control must detect a missed cannon, not just count requested particles")
-        XCTAssertTrue(visible.contains(4), "Later cannons must still be visible; an entirely empty capture is not a valid control")
+        XCTAssertTrue(visible.contains(4), "The live reference must be visible; an entirely empty capture is not a valid control")
     }
 }

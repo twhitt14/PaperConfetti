@@ -250,6 +250,13 @@ import PaperConfetti
                 // A rate of 1/duration can produce zero pieces at the boundary.
                 // Native birth counts remain estimates; there is no exact-count API.
                 cell.birthRate = 25; cell.duration = 0.06
+                if legacy && emissionProbe && piece.x > Double(bounds.width) * 0.8 {
+                    // A visible calibration reference, independent of a second
+                    // fragile 60ms window. Earlier columns retain the broken clock.
+                    // The negative fixture uses eight cells per column, so this
+                    // longer-lived reference remains tiny and is never measured.
+                    cell.birthRate = 2; cell.duration = 3
+                }
                 cell.lifetime = Float(cohort.duration + 0.06)
                 cell.velocity = CGFloat(cos(piece.phase) * piece.flutter * 0.5)
                 cell.velocityRange = 0; cell.emissionLongitude = 0; cell.emissionRange = 0

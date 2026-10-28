@@ -61,6 +61,16 @@ already do. Performance trials and the library are unchanged; stop/replay/tap
 assertions remain intact and execute against live particles. All five study UI
 tests passed locally (`.artifacts/Release02InteractionWindowFinal.xcresult`).
 
+The subsequent hosted run passed the production pixel/interaction checks but
+also missed the old-clock negative control's final cannon. That calibration now
+uses a small population and a sustained final reference emission. The first
+cannon retains the expired 60ms window and must remain absent; the live final
+reference must appear. This avoids relying on the deliberately broken timing
+being reliable for a different cannon. Full 5,760-slot/5-cannon production
+coverage and its injected submission delay are unchanged. Three repeated local
+runs passed all nine pixel checks (18 cannon replays, three grids and three
+calibrated negative controls; `.artifacts/Release02CalibratedControl.xcresult`).
+
 This physical evidence establishes emission correctness on the tested device,
 not a general FPS/energy or all-device capacity guarantee. The historical 0.1 CPU
 comparison is labeled accordingly; no new performance percentage is claimed.
