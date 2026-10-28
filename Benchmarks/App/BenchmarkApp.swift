@@ -4,7 +4,9 @@ import SwiftUI
 struct BenchmarkApp: App {
     var body: some Scene {
         WindowGroup {
-            if ProcessInfo.processInfo.arguments.contains("--ui-testing") {
+            if ProcessInfo.processInfo.arguments.contains("--article-demo") {
+                ArticleDemoView().preferredColorScheme(.dark)
+            } else if ProcessInfo.processInfo.arguments.contains("--ui-testing") {
                 // Existing gesture tests use a deliberately extended flight, never for timing.
                 ShowcaseView().preferredColorScheme(.dark)
             } else if ProcessInfo.processInfo.arguments.contains(where: { $0.hasPrefix("--study=") })

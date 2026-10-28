@@ -40,7 +40,7 @@ def verified_owner(owner, root):
                                     capture_output=True, text=True, timeout=5, check=True)
             cwd = next(line[1:] for line in result.stdout.splitlines() if line.startswith('n'))
             script = str(Path(cwd) / script)
-        allowed = {root / 'tools/compare.py', root / 'tools/profile.py'}
+        allowed = {root / 'tools/compare.py', root / 'tools/profile.py', root / 'tools/article-demo.py'}
         if not python or Path(script).resolve() not in allowed:
             raise ValueError('Not this repository\'s comparison runner')
     except (ValueError, IndexError, StopIteration, subprocess.SubprocessError) as error:
