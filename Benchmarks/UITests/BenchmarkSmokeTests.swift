@@ -47,7 +47,7 @@ final class RendererStudyTests: XCTestCase {
 
     func testVisualReviewCanStopReplayAndSwitchAutomatically() {
         let app = XCUIApplication()
-        app.launchArguments = ["--visual-review", "--study=emitter-720,paper-720"]
+        app.launchArguments = ["--visual-review", "--study-interaction-test", "--study=emitter-720,paper-720"]
         app.launch()
         let replay = app.buttons["study-replay"]
         XCTAssertTrue(replay.waitForExistence(timeout: 10))
@@ -55,6 +55,8 @@ final class RendererStudyTests: XCTestCase {
         app.buttons["study-stop"].coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
         XCTAssertTrue(app.staticTexts["study-status"].label.contains("Animation stopped"))
         replay.tap()
+        expectation(for: NSPredicate(format: "label BEGINSWITH %@", "emitter-720"), evaluatedWith: app.staticTexts["study-status"])
+        waitForExpectations(timeout: 5)
         app.buttons["study-tap"].coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
         XCTAssertEqual(app.staticTexts["study-active-taps"].label, "Taps during flight: 1")
         app.buttons["study-next"].tap()
@@ -66,7 +68,7 @@ final class RendererStudyTests: XCTestCase {
 
     func testAllRendererOverlaysPassThroughRealTapsAndScrolling() {
         let app = XCUIApplication()
-        app.launchArguments = ["--visual-review", "--study=paper-720,layers-720,emitter-720,emitter-3d-720"]
+        app.launchArguments = ["--visual-review", "--study-interaction-test", "--study=paper-720,layers-720,emitter-720,emitter-3d-720"]
         app.launch()
         XCTAssertTrue(app.buttons["study-replay"].waitForExistence(timeout: 10))
         for index in 0..<4 {

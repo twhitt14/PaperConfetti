@@ -53,6 +53,14 @@ and 18 iOS tests, three example UI tests, Release builds and DocC
 (`.artifacts/validation-20261028T204712Z/`). Final hosted/device receipts are recorded in
 the release notes rather than claiming an older run covers the new clock.
 
+Both hosted toolchains passed the revised native pixel tests. Xcode 26.6 then
+exposed a separate interaction-test race: resolving and tapping Stop took over
+seven seconds, longer than the ordinary five-second celebration. Benchmark UI
+interaction tests now use a long-lived flight fixture, as the example tests
+already do. Performance trials and the library are unchanged; stop/replay/tap
+assertions remain intact and execute against live particles. All five study UI
+tests passed locally (`.artifacts/Release02InteractionWindowFinal.xcresult`).
+
 This physical evidence establishes emission correctness on the tested device,
 not a general FPS/energy or all-device capacity guarantee. The historical 0.1 CPU
 comparison is labeled accordingly; no new performance percentage is claimed.

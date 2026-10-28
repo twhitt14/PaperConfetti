@@ -59,6 +59,12 @@ struct StudyScenario: Decodable, Identifiable {
         fallSpeedRange: uniformSpeed ? 1...1 : 0.75...1.35)
         if !tumble { burst.motion.tumble = 0...0 }
         if !flutter { burst.motion.flutter = 0 }
+        if ProcessInfo.processInfo.arguments.contains("--study-interaction-test") {
+            // UI automation can spend several seconds locating a single control.
+            // Keep real particles alive through those gestures; never use this
+            // interaction-only fixture in a measured performance trial.
+            burst.fall = 2_000; burst.fallSpeedRange = 0.25...0.25
+        }
         if ProcessInfo.processInfo.arguments.contains("--emission-probe") {
             // Keep the diagnostic population alive long enough for screenshot RPCs.
             // The probe host holds position/opacity; actual cell birth timing stays unchanged.

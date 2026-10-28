@@ -170,7 +170,7 @@ import os.signpost
             try? await pause(0.45)
             guard !Task.isCancelled else { return }
             if spec.hostMotion { withAnimation(.easeInOut(duration: 0.5)) { scrollToBottom = true } }
-            try? await pause(4.8)
+            try? await pause(args.contains("--study-interaction-test") ? 60 : 4.8)
             guard !Task.isCancelled else { return }
             busy = false
         }
