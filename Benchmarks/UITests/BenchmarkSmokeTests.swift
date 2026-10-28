@@ -165,8 +165,11 @@ final class NativeEmissionTests: XCTestCase {
                 context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
             }
             for index in 0..<5760 where !visible.contains(index) {
-                let x = Int((surface.minX + (Double(index % 60) + 0.5) * surface.width / 60) * scale)
-                let y = Int((surface.minY + surface.height * 0.2 + (Double(index / 60) + 0.5) * surface.height * 0.6 / 96) * scale)
+                let column = (Double(index % 60) + 0.5) / 60.0
+                let row = (Double(index / 60) + 0.5) / 96.0
+                let pointX = Double(surface.minX) + column * Double(surface.width)
+                let pointY = Double(surface.minY) + (0.2 + row * 0.6) * Double(surface.height)
+                let x = Int(pointX * scale), y = Int(pointY * scale)
                 for yy in max(0,y-3)...min(height-1,y+3) { for xx in max(0,x-3)...min(width-1,x+3) {
                     let offset = (yy * width + xx) * 4
                     if max(bytes[offset], bytes[offset+1], bytes[offset+2]) > 70 { visible.insert(index) }
