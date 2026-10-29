@@ -199,6 +199,73 @@ package resource. Its outer-weighted launch distribution and timing curves
 informed this independent renderer. All 13 festive silhouettes are original
 vector paths. No runtime dependency on ConfettiSwiftUI is required.
 
+## On-device performance: native 0.2.0
+
+We retested the finalized native renderer and physics on **October 29, 2026**, in
+flat (2D) and 3D modes. These are Release-build results from an **iPhone 18 Pro Max
+running iOS 27.0.1**, with no screen recording used by the suite. Each burst used
+five cannons, thirteen festive shapes, the same palette, nominal size and seeded
+flight paths, alongside simulated keyboard dismissal and scrolling.
+
+### App CPU time
+
+| Total pieces per burst | Flat (2D) | 3D |
+| --- | ---: | ---: |
+| 180 | 106.2 ms | 110.2 ms |
+| 720 | 162.4 ms | 153.0 ms |
+| 5,760 | 369.5 ms | 394.2 ms |
+
+Values are **cumulative whole-app CPU time over roughly six-second trials**, not
+frame times or GPU measurements. Each is the median of three measured repetitions
+after warm-up, with flat/3D order alternating within the same process. All recorded paired
+CPU thermal states were nominal. The modes were close in this workload;
+the small samples do not establish a consistent speed winner. **3D remains the
+default**, with flat available as an appearance choice.
+
+### Animation hitches
+
+A separate Animation Hitches pass recorded two measured bursts per mode and count
+after warm-up. The table shows **total hitch events across those two bursts**:
+
+| Total pieces per burst | Flat (2D) hitches | 3D hitches |
+| --- | ---: | ---: |
+| 180 | 0 | 0 |
+| 720 | 0 | 0 |
+| 1,440 | 0 | 0 |
+| 2,880 | 0 | 1 |
+| 5,760 | 13 | 10 |
+
+Both modes had no recorded hitches through 1,440 pieces in these warm trials.
+At 2,880, the single 3D hitch lasted 16.7 ms. At 5,760, total hitch duration was
+225.0 ms flat and 145.8 ms in 3D across the two bursts; the longest individual
+hitches were 50.0 ms and 16.7 ms, respectively. All recorded timing thermal states were nominal.
+These are process-attributed events within matching trial signposts, **not FPS**
+or Apple's animation-active hitch-time ratio. Instrumentation can affect behavior;
+5,760 is a stress load, not a hitch-free recommendation.
+
+### Cleanup and interaction
+
+Six memory rounds per mode alternated natural completion and cancellation,
+including one warm-up and five retained samples.
+Settled app footprint showed no upward trend in these runs, ending around 54 MiB
+at 180 pieces and 58.4 MiB flat / 60.6 MiB in 3D at 5,760. This includes app and
+framework caches, not all GPU/render-server memory; it is not proof of leak-free
+behavior under every workload.
+
+All **14 physical UI tests** passed, including taps and scrolling through live
+confetti, Reduce Motion, cancellation, all five cannons at 5,760 pieces, and a
+pixel probe covering all 5,760 grid slots. The profiling runner's 35 Python tests
+also passed. Incomplete or interrupted captures were excluded and rerun; the
+runner now handles startup scene changes and reserves enough collection time
+for high-load Allocations measurements.
+
+The [sanitized per-trial data](Documentation/benchmarks/2026-10-29-native-flat-vs-3d.json)
+includes warm-ups, source hashes, reproduction commands and the limits of each
+pass. See the [renderer-study protocol](Documentation/RENDERER_STUDY.md). These
+results cover one device and warm workloads; they do not establish cold-start
+performance, energy savings, or a new speedup over ConfettiSwiftUI. The historical
+comparison below used a different PaperConfetti renderer, shape set and pass.
+
 ## Historical 0.1.0 on-device CPU comparison
 
 These results describe the **0.1.0 layer renderer**, not the new native default.
