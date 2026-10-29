@@ -172,6 +172,14 @@ The example includes three palettes, per-shape selection, particle/size/spread
 controls, flat/3D selection, shape-speed variation, a Reduce Motion preview, and touch-through
 controls beneath the animation. Its dependency is the package in this repository.
 
+Open `Examples/PaperConfettiExample.xcodeproj`, select the **PaperConfettiExample**
+scheme and your iPhone, then press **⌘R**. In **Make it yours**, switch **Launch
+speed** between **Normal** and **10% faster**, then tap **Pop** or **5 cannons**.
+The example starts with the faster option for comparison; the library default is
+unchanged. This divides the normal randomized `motion.launchDuration` range by
+1.1, increasing launch velocity by 10% at the same reach, without speeding up the
+fall or changing cannon spacing. Compare both flat and 3D appearances.
+
 ```sh
 swift test                         # Pure physics tests on macOS
 python3 tools/validate.py           # Package + example iOS tests, Release build, DocC

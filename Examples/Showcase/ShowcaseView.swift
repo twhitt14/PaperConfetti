@@ -11,6 +11,7 @@ struct ShowcaseView: View {
     @State private var count = 180.0
     @State private var size = 12.0
     @State private var spread = 80.0
+    @State private var launchSpeed = 1.1
     @State private var variedSpeeds = true
     @State private var taps = 0
     @State private var toggled = false
@@ -151,6 +152,15 @@ struct ShowcaseView: View {
                 Text("3D tumble").tag(ConfettiAppearance.threeDimensional)
                 Text("Flat").tag(ConfettiAppearance.flat)
             }.pickerStyle(.segmented).accessibilityIdentifier("appearance")
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Launch speed").font(.subheadline.weight(.semibold))
+                Picker("Launch speed", selection: $launchSpeed) {
+                    Text("Normal").tag(1.0)
+                    Text("10% faster").tag(1.1)
+                }.pickerStyle(.segmented).accessibilityIdentifier("launch-speed")
+                Text("A quicker rise, with the same height and fall.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
             Picker("Palette", selection: $palette) {
                 ForEach(Palette.allCases) { value in Text(value.rawValue).tag(value) }
             }.pickerStyle(.segmented).accessibilityIdentifier("palette")
@@ -241,6 +251,10 @@ struct ShowcaseView: View {
         let fall = testing ? 2_000.0 : 500.0
         let speeds = testing ? 0.5...0.6 : (variedSpeeds ? 0.75...1.35 : 1...1)
         let total = Int(count)
+        let radius = min(320, Double(bounds.height) * 0.42)
+        // Match the library's radius-derived launch range, then scale only the rise.
+        // Dividing by 1.1 gives 10% more launch velocity at the same reach.
+        let launchRange = ((0.2 + radius / 1300) / launchSpeed)...((0.675 + radius / 1300) / launchSpeed)
         let burst = ConfettiBurst(
             cannons: (0..<cannons).map { index in
                 .init(
@@ -250,8 +264,9 @@ struct ShowcaseView: View {
             },
             seed: ProcessInfo.processInfo.arguments.contains("--capture-pop")
                 ? 42 : .random(in: 1...UInt64.max),
-            radius: min(320, Double(bounds.height) * 0.42), fall: fall, size: size,
-            shapes: shapes, fallSpeedRange: speeds, appearance: appearance)
+            radius: radius, fall: fall, size: size,
+            shapes: shapes, fallSpeedRange: speeds,
+            motion: .init(launchDuration: launchRange), appearance: appearance)
         if reduceMotion || reduceMotionDemo {
             confetti.cancel()
         } else {
