@@ -65,6 +65,25 @@ class StudyTests(unittest.TestCase):
         with self.assertRaises(study.p.ProfileError): study.select_cases('renderers','paper-720,paper-720')
         with self.assertRaises(study.p.ProfileError): study.select_cases('renderers','missing')
 
+    def test_memory_collection_covers_observed_high_load_overhead(self):
+        # Physical 5,760-piece Allocations run: eleven rows were saved when the
+        # old 86-second window polled the still-running twelfth trial. Include
+        # preparation, settling and untimed audits, not just animation duration.
+        # Repeat the last observed duration for the unfinished final trial,
+        # and allow 2.5 seconds per trial for preparation/audits.
+        observed_trial_seconds = [3.16, 3.28, 7.89, 7.95, 3.03, 3.24,
+                                  7.86, 7.52, 3.15, 3.34, 8.09, 8.09]
+        conservative_session_seconds = 2 + sum(observed_trial_seconds) + 12 * 2.5
+        self.assertGreater(conservative_session_seconds, 86)
+        self.assertGreater(study.recording_budget('memory', 2, 6, 9), conservative_session_seconds)
+        self.assertGreaterEqual(study.recording_budget('memory', 2, 6, 20), 2 + 12 * 20)
+
+    def test_timing_and_cpu_keep_the_requested_collection_budget(self):
+        for phase in ('timing', 'cpu'):
+            with self.subTest(phase=phase):
+                self.assertEqual(study.recording_budget(phase, 1, 3, 15), 47)
+                self.assertEqual(study.recording_budget(phase, 2, 4, 10), 82)
+
     def payload(self):
         return {'schema':2,'run_id':'r','pass':'timing','finished':True,'success':True,'simulator':False,'process_id':42,
                 'rows':[{'scenario':'layers-720','round':0,'duration_s':5.5,'cpu_ms':20,'footprint_end_bytes':1000,

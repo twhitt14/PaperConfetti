@@ -44,6 +44,14 @@ def chunks(cases, maximum=4):
     return [warm[i:i+maximum] for i in range(0, len(warm), maximum)] + [[c] for c in cases if not c['prewarm']]
 
 
+def recording_budget(phase, case_count, rounds, trial_budget):
+    # Allocations adds substantial setup/preparation overhead at 5,760 pieces.
+    # Keep collection outside all trials and honor a larger caller budget for
+    # memory too; the former fixed seven seconds could poll the final trial.
+    per_trial = max(12, trial_budget) if phase == 'memory' else trial_budget
+    return math.ceil(2 + case_count * rounds * per_trial)
+
+
 def validate(payload, run_id, phase, cases, rounds, simulator):
     if payload.get('schema') != 2 or payload.get('run_id') != run_id or payload.get('pass') != phase:
         raise p.ProfileError('Stale or incompatible study result')
@@ -160,7 +168,7 @@ def main():
     parser.add_argument('--only', help='Comma-separated scenario IDs; use --list')
     parser.add_argument('--phase', choices=['all','timing','cpu','memory'], default='all')
     parser.add_argument('--rounds', type=int, choices=range(1,7), default=3, help='Includes one warm-up; default 3. Memory uses at least 6 cycles.')
-    parser.add_argument('--trial-budget', type=int, choices=range(9,31), default=9, help='Seconds reserved per timing/CPU trial including untimed audit; default 9')
+    parser.add_argument('--trial-budget', type=int, choices=range(9,31), default=9, help='Seconds reserved per trial including untimed audit; default 9, memory minimum 12, stress minimum 15')
     parser.add_argument('--device'); parser.add_argument('--team')
     parser.add_argument('--list', action='store_true')
     parser.add_argument('--simulator-smoke', action='store_true')
@@ -241,7 +249,7 @@ def main():
                         rounds = (2 if phase == 'memory' else 1) if args.simulator_smoke else 1 if not selected[0]['prewarm'] else max(6,args.rounds) if phase=='memory' else args.rounds
                         part = output / f'{phase}-{index:02}-{cold_repeat:02}'; part.mkdir()
                         runner.output = part; runner.cases = selected; runner.rounds = rounds
-                        seconds = math.ceil(2 + len(selected) * rounds * (args.trial_budget if phase!='memory' else 7))
+                        seconds = recording_budget(phase, len(selected), rounds, args.trial_budget)
                         print(f'{phase}: {", ".join(c["id"] for c in selected)} ({rounds} rounds)', flush=True)
                         entry = {'directory':part.name,'phase':phase,'scenarios':[c['id'] for c in selected]}
                         receipt['recordings'].append(entry)
@@ -251,7 +259,12 @@ def main():
                             entry['error'] = str(error)
                             saved = part / (phase+'-measurements.json')
                             if not saved.exists(): raise
-                            payload = json.loads(saved.read_text()); identity=payload.get('run_id','')
+                            payload = json.loads(saved.read_text())
+                            if not payload.get('finished'):
+                                # Preserve the collection-budget error instead of
+                                # replacing it with a generic validation failure.
+                                raise
+                            identity=payload.get('run_id','')
                             marker = part / ('start-'+identity)
                             if not marker.exists() or marker.read_text()!=identity: raise
                             runner.validate_measurements(payload,identity,phase)

@@ -23,6 +23,7 @@ import os.signpost
     private var results: [[String: Any]] = []
     private var error: String?
     private var interrupted = false
+    private var hasStartedMeasurements = false
     private var visualTask: Task<Void, Never>?
     private let directory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
     private var runID: String { value("--run-id=") ?? "manual-study" }
@@ -39,11 +40,25 @@ import os.signpost
         scenario = scenarios[0]; visualCount = scenario.count
     }
     private func pause(_ seconds: Double) async throws { try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000)) }
+    private var environmentSnapshot: [String: Any] {
+        ["application_state": UIApplication.shared.applicationState.rawValue,
+         "thermal_state": ProcessInfo.processInfo.thermalState.rawValue,
+         "low_power_mode": ProcessInfo.processInfo.isLowPowerModeEnabled,
+         "reduce_motion": UIAccessibility.isReduceMotionEnabled,
+         "interrupted": interrupted]
+    }
     private func check() throws {
-        guard !interrupted, UIApplication.shared.applicationState == .active,
-              !UIAccessibility.isReduceMotionEnabled, !ProcessInfo.processInfo.isLowPowerModeEnabled,
-              ProcessInfo.processInfo.thermalState == .nominal || ProcessInfo.processInfo.thermalState == .fair else {
-            throw BenchmarkModel.Failure("Keep the app visible, turn off Low Power Mode/Reduce Motion, and let the phone cool before measuring.")
+        var reasons: [String] = []
+        if interrupted { reasons.append("the study was interrupted") }
+        if UIApplication.shared.applicationState != .active { reasons.append("the app is not in the foreground") }
+        if UIAccessibility.isReduceMotionEnabled { reasons.append("Reduce Motion is on") }
+        if ProcessInfo.processInfo.isLowPowerModeEnabled { reasons.append("Low Power Mode is on") }
+        let thermal = ProcessInfo.processInfo.thermalState
+        if thermal != .nominal && thermal != .fair {
+            reasons.append("thermal state is \(thermal == .serious ? "serious" : thermal == .critical ? "critical" : "unknown")")
+        }
+        if !reasons.isEmpty {
+            throw BenchmarkModel.Failure("Measurement stopped: \(reasons.joined(separator: "; ")). Keep the app visible, turn off Low Power Mode/Reduce Motion, and let the phone cool before measuring.")
         }
     }
     func run(size: CGSize) async {
@@ -56,6 +71,8 @@ import os.signpost
             }
             return
         }
+        // Deterministic UI regression fixture for scene changes during launch.
+        if args.contains("--study-prestart-interruption") { stop() }
         do {
             if !args.contains("--autostart") {
                 let marker = directory.appendingPathComponent("start-\(runID)")
@@ -70,6 +87,12 @@ import os.signpost
                 // Matching the complete run ID also rejects partial/stale transfers.
             }
             try await pause(1)
+            try check()
+            // A launch-time inactive scene must not poison a later valid run.
+            // After this point, every scene interruption invalidates the study,
+            // even when the app becomes active again before the next check.
+            hasStartedMeasurements = true
+            UIApplication.shared.isIdleTimerDisabled = true
             for round in 0..<rounds {
                 let offset = round % scenarios.count
                 for spec in Array(scenarios.dropFirst(offset)) + scenarios.prefix(offset) {
@@ -87,6 +110,7 @@ import os.signpost
                         if spec.count > 0 && (setup["requested_particles"] as? Int) != spec.count {
                             throw BenchmarkModel.Failure("Renderer did not submit the requested particle population.")
                         }
+                        if args.contains("--study-interrupt-during-trial") { stop() }
                         if pass == "memory" {
                             try await pause(round % 2 == 0 ? 1 : 5.5)
                             if round % 2 == 1 && !renderer.isIdle { throw BenchmarkModel.Failure("Natural cleanup failed.") }
@@ -138,7 +162,7 @@ import os.signpost
             "success": finished && error == nil, "error": error as Any? ?? NSNull(), "simulator": simulator,
             "process_id": ProcessInfo.processInfo.processIdentifier, "rounds": rounds,
             "os": UIDevice.current.systemVersion, "screen_maximum_fps": UIScreen.main.maximumFramesPerSecond,
-            "screen_scale": UIScreen.main.scale, "rows": results]
+            "screen_scale": UIScreen.main.scale, "environment": environmentSnapshot, "rows": results]
         try JSONSerialization.data(withJSONObject: payload, options: [.prettyPrinted, .sortedKeys])
             .write(to: directory.appendingPathComponent("results-\(runID).json"), options: .atomic)
     }
@@ -191,7 +215,7 @@ import os.signpost
         } catch { visualNote = "Could not save note" }
     }
     func stop() {
-        interrupted = true
+        if hasStartedMeasurements { interrupted = true }
         visualTask?.cancel(); renderer.reset(); busy = false
         UIApplication.shared.isIdleTimerDisabled = false
     }

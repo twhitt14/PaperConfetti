@@ -14,6 +14,29 @@ final class BenchmarkSmokeTests: XCTestCase {
 }
 
 final class RendererStudyTests: XCTestCase {
+    func testStartupInterruptionDoesNotPoisonMeasurements() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--study=emitter-180", "--study-rounds=1", "--autostart",
+                               "--run-id=prestart-interruption", "--study-prestart-interruption"]
+        app.launch()
+        let status = app.staticTexts["study-status"]
+        XCTAssertTrue(status.waitForExistence(timeout: 10))
+        expectation(for: NSPredicate(format: "label == %@", "Comparison saved"), evaluatedWith: status)
+        waitForExpectations(timeout: 45)
+    }
+
+    func testInterruptionDuringMeasurementIsStillRejected() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--study=emitter-180", "--study-rounds=1", "--autostart",
+                               "--run-id=active-interruption", "--study-interrupt-during-trial"]
+        app.launch()
+        let status = app.staticTexts["study-status"]
+        XCTAssertTrue(status.waitForExistence(timeout: 10))
+        expectation(for: NSPredicate(format: "label CONTAINS %@", "the study was interrupted"), evaluatedWith: status)
+        waitForExpectations(timeout: 45)
+        XCTAssertNotEqual(status.label, "Comparison saved")
+    }
+
     func testAllRenderersCompleteAndCleanUp() {
         let app = XCUIApplication()
         app.launchArguments = ["--study=paper-720,layers-720,emitter-720,emitter-3d-720", "--study-rounds=1", "--autostart", "--run-id=study-ui-smoke"]
