@@ -1,11 +1,13 @@
 # PaperConfetti
 
+[![Swift versions](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Ftwhitt14%2FPaperConfetti%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/twhitt14/PaperConfetti)
+[![Platforms](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Ftwhitt14%2FPaperConfetti%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/twhitt14/PaperConfetti)
+
 A dependency-free iOS 16+ confetti package for SwiftUI and UIKit. Thirteen paper
 shapes, lifelike tumble, and a simple `pop()` method. Core Animation handles the
 flight while your interface keeps responding.
 
-**Version 0.2.0** uses native particles, with 3D tumble by default and an optional flat appearance. The repository is currently private;
-installation requires GitHub access to `twhitt14/PaperConfetti`. See
+**Version 0.2.0** uses native particles, with 3D tumble by default and an optional flat appearance. The package is publicly available on GitHub. See
 [validation results](VALIDATION.md) and the [release workflow](PUBLISHING.md).
 
 <img src="Documentation/showcase.png" width="320" alt="PaperConfetti example with a colorful burst over tappable controls">
