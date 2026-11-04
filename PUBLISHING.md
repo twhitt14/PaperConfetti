@@ -31,8 +31,10 @@ visibility as part of a release. [Apple's publishing guide](https://developer.ap
    validation and limitations. Verify the release points to the intended tag.
 
 CI pins action commits, has read-only contents permission, cancels superseded
-branch runs, bounds each job to 25 minutes and retains evidence for seven days.
-It never creates tags or releases and has no publishing credentials. Use existing
+branch runs, bounds each job to 40 minutes and retains evidence for seven days.
+The 40-minute ceiling accommodates both complete profiling/interaction passes on
+cold hosted simulators; no test stage is omitted. It never creates tags or
+releases and has no publishing credentials. Use existing
 GitHub authentication for authorized releases; never put tokens in this repository.
 
 ## Device validation and public discoverability

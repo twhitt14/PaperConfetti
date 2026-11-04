@@ -1,5 +1,28 @@
 # Validation and release review
 
+## 0.3.0 release preflight — November 4, 2026
+
+The callback and button-origin sections below record the earlier, unreleased
+review stages. Final tag/release verification is recorded in the GitHub release.
+
+- Local Xcode 27.2 / Swift 6.4.2 validation passed again in
+  `.artifacts/validation-20261104T205848Z/`: nine macOS tests, 33 iOS package
+  tests, three example UI tests, strict Swift 6 library/examples, Release builds
+  and DocC.
+- Hosted Xcode 16.4 exposed a pre-existing comparison-app ambiguity between
+  `CGFloat` and `Double`. Explicit coordinate conversion fixes it without
+  changing values, the renderer, or package APIs. The corrected benchmark app
+  builds locally; both hosted toolchains subsequently passed it.
+- The next hosted run passed package/example/DocC validation and all 14 benchmark
+  UI tests on **both** Xcode 16.4 and 26.6. Each job then reached the old
+  25-minute ceiling during the second profiling interaction pass. That run is
+  incomplete, not a release pass. The ceiling is now 40 minutes; test coverage,
+  matrix, triggers, pinned Actions and permissions remain the same.
+- Release evidence: initial compiler failure in Actions run `41912302385`;
+  timed-out follow-up `41915169281`. Local logs and retained hosted evidence are
+  under ignored `.artifacts/release-0.3.0/` and the dated release handoff in `/tmp`.
+
+
 ## Reviewed completion draft and button origins — November 4, 2026 (unreleased)
 
 The reviewed callback design is unchanged. The readiness delegate now captures
