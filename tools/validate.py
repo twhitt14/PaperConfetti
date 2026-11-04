@@ -17,6 +17,35 @@ def command(args, log, cwd=ROOT):
         print('\n'.join(log.read_text(errors='replace').splitlines()[-40:]))
         raise SystemExit(f'Failed; full log: {log}')
 
+def compile_examples(output):
+    # Type checking alone misses diagnostics emitted during SIL/code generation.
+    # Keep the package in its declared language mode; this is a separate Swift 6 check.
+    version = subprocess.check_output(['swift', '--version'], text=True)
+    match = re.search(r'Swift version (\d+)', version)
+    if not match or int(match.group(1)) < 6:
+        print('Swift 6 compiler check skipped: selected compiler predates Swift 6.', flush=True)
+        return False
+    sdk = subprocess.check_output(['xcrun', '--sdk', 'iphonesimulator', '--show-sdk-path'], text=True).strip()
+    architecture = subprocess.check_output(['uname', '-m'], text=True).strip()
+    compiled = output / 'strict-swift6'
+    compiled.mkdir()
+    common = ['xcrun', 'swiftc', '-sdk', sdk, '-target', architecture + '-apple-ios16.0-simulator',
+              '-swift-version', '6', '-strict-concurrency=complete', '-warnings-as-errors', '-parse-as-library']
+    command([*common, '-emit-library', '-emit-module', '-module-name', 'PaperConfetti',
+             '-emit-module-path', str(compiled / 'PaperConfetti.swiftmodule'),
+             '-o', str(compiled / 'libPaperConfetti.dylib'),
+             *map(str, sorted((ROOT / 'Sources/PaperConfetti').glob('*.swift')))],
+            compiled / 'library.log')
+    guide = (ROOT / 'Sources/PaperConfetti/PaperConfetti.docc/ButtonOrigin.md').read_text()
+    example = (ROOT / 'Examples/ButtonOrigin.swift').read_text()
+    snippets = re.findall(r'```swift\n(.*?)```', guide, re.S)
+    if not snippets or snippets[0].strip() != example.strip():
+        raise SystemExit('The button-origin DocC example must match Examples/ButtonOrigin.swift.')
+    for name in ['QuickStart', 'ButtonOrigin']:
+        command([*common, '-c', '-I', str(compiled), str(ROOT / 'Examples' / (name + '.swift')),
+                 '-o', str(compiled / (name + '.o'))], compiled / (name + '.log'))
+    return True
+
 def simulator():
     data = json.loads(subprocess.check_output(['xcrun', 'simctl', 'list', '--json']))
     # Use the selected Xcode's SDK generation, not a newer incompatible runtime
@@ -56,6 +85,7 @@ def main():
         command(['swift', 'build', '-c', 'release'], output / 'core-release.log')
     if args.core_only:
         print('Core checks passed: ' + str(output)); return
+    strict_swift6 = compile_examples(output)
     device = args.device or simulator()
     devices = json.loads(subprocess.check_output(['xcrun', 'simctl', 'list', 'devices', '--json']))['devices']
     selected = next(d for rows in devices.values() for d in rows if d['udid'] == device)
@@ -79,7 +109,7 @@ def main():
     receipt = {'completedAt': datetime.datetime.now(datetime.timezone.utc).isoformat(), 'simulator': device,
                'xcode': subprocess.check_output(['xcodebuild', '-version'], text=True).strip(),
                'swift': subprocess.check_output(['swift', '--version'], text=True).strip(),
-               'coreSkipped': args.skip_core, 'result': 'passed'}
+               'coreSkipped': args.skip_core, 'strictSwift6Compiled': strict_swift6, 'result': 'passed'}
     (output / 'result.json').write_text(json.dumps(receipt, indent=2) + '\n')
     print('All checks passed: ' + str(output))
 

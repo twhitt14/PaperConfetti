@@ -42,11 +42,14 @@
         private struct Request {
             let makeBurst: (CGSize) -> ConfettiBurst
             let colors: [UIColor]
+            let completion: ConfettiCompletion
         }
         private weak var renderer: ConfettiLayerView?
         private var pending: Request?
         private var hasMounted = false
-        private var enabled = false
+        private var sceneIsActive = false
+        private var reduceMotion = false
+        private var enabled: Bool { sceneIsActive && !reduceMotion }
         public init() {}
 
         public var isPlaying: Bool { (renderer?.particleLayerCount ?? 0) > 0 }
@@ -56,6 +59,18 @@
         /// Before the first mount, at most one request is retained for initial onAppear.
         @discardableResult
         public func pop(at origin: CGPoint? = nil, configuration: ConfettiConfiguration = .init()) -> Bool {
+            pop(at: origin, configuration: configuration, completion: nil)
+        }
+
+        /// Observe this request's outcome without guessing its duration. The callback
+        /// is delivered once, asynchronously on the main actor, after internal cleanup.
+        /// Rejected requests also report an outcome; the Bool still means acceptance.
+        /// A pre-mount request waits until attachment, replacement, or cancellation.
+        @discardableResult
+        public func pop(
+            at origin: CGPoint? = nil, configuration: ConfettiConfiguration = .init(),
+            completion: (@MainActor (ConfettiOutcome) -> Void)?
+        ) -> Bool {
             submit(
                 Request(
                     makeBurst: { bounds in
@@ -69,34 +84,57 @@
                             fall: configuration.fall, size: configuration.size, shapes: configuration.shapes,
                             fallSpeedRange: configuration.fallSpeedRange, motion: configuration.motion,
                             appearance: configuration.appearance)
-                    }, colors: configuration.colors.prefix(16).map(UIColor.init)))
+                    }, colors: configuration.colors.prefix(16).map(UIColor.init),
+                    completion: ConfettiCompletion(completion)))
         }
 
         /// Full control: independently placed/delayed cannons, requested budget, palette,
         /// shape selection, dimensions, flight distances, speed range and optional seed.
         @discardableResult
         public func pop(_ burst: ConfettiBurst, colors: [Color] = [.cyan, .pink, .yellow]) -> Bool {
-            submit(Request(makeBurst: { _ in burst }, colors: colors.prefix(16).map(UIColor.init)))
+            pop(burst, colors: colors, completion: nil)
+        }
+
+        /// Observe a multi-cannon request using the same lifecycle contract as an
+        /// ordinary pop. All cannon delays are included in natural completion.
+        @discardableResult
+        public func pop(
+            _ burst: ConfettiBurst, colors: [Color] = [.cyan, .pink, .yellow],
+            completion: (@MainActor (ConfettiOutcome) -> Void)?
+        ) -> Bool {
+            submit(Request(makeBurst: { _ in burst }, colors: colors.prefix(16).map(UIColor.init),
+                           completion: ConfettiCompletion(completion)))
         }
 
         public func cancel() {
+            pending?.completion.resolve(.cancelled)
             pending = nil
             renderer?.cancel()
         }
 
         private func submit(_ request: Request) -> Bool {
-            guard !hasMounted || (renderer != nil && enabled) else { return false }
+            guard !hasMounted || (renderer != nil && sceneIsActive) else {
+                request.completion.resolve(.notPresented)
+                return false
+            }
             if let renderer, renderer.hasEnteredWindow,
                 renderer.window == nil || renderer.window?.isHidden == true
             {
+                request.completion.resolve(.notPresented)
                 return false
             }
+            guard !hasMounted || !reduceMotion else {
+                request.completion.resolve(.reducedMotion)
+                return false
+            }
+            pending?.completion.resolve(.cancelled)
+            renderer?.cancel()
             pending = request
             flush()
             return true
         }
 
-        fileprivate func attach(_ view: ConfettiLayerView, enabled: Bool) {
+        func attach(_ view: ConfettiLayerView, sceneIsActive: Bool, reduceMotion: Bool) {
             if renderer !== view {
                 renderer?.layoutReady = nil
                 renderer?.cancel()
@@ -104,16 +142,23 @@
                 view.layoutReady = { [weak self] in self?.flush() }
             }
             hasMounted = true
-            self.enabled = enabled
-            if enabled { flush() } else { cancel() }
+            self.sceneIsActive = sceneIsActive
+            self.reduceMotion = reduceMotion
+            if enabled {
+                flush()
+            } else {
+                pending?.completion.resolve(sceneIsActive ? .reducedMotion : .notPresented)
+                pending = nil
+                renderer?.cancel()
+            }
         }
 
-        fileprivate func detach(_ view: ConfettiLayerView) {
+        func detach(_ view: ConfettiLayerView) {
             guard renderer === view else { return }
             cancel()
             view.layoutReady = nil
             renderer = nil
-            enabled = false
+            sceneIsActive = false
         }
 
         private func flush() {
@@ -121,13 +166,15 @@
                 view.bounds.width > 0, view.bounds.height > 0, let request = pending
             else { return }
             pending = nil
-            view.play(burst: request.makeBurst(view.bounds.size), colors: request.colors)
+            view.play(burst: request.makeBurst(view.bounds.size), colors: request.colors,
+                      completion: request.completion)
         }
     }
 
     private struct ControlledConfettiOverlay: UIViewRepresentable {
         let controller: ConfettiController
-        let enabled: Bool
+        let sceneIsActive: Bool
+        let reduceMotion: Bool
         func makeUIView(context: Context) -> ConfettiLayerView { ConfettiLayerView() }
         func makeCoordinator() -> Coordinator { Coordinator(controller) }
         func updateUIView(_ view: ConfettiLayerView, context: Context) {
@@ -135,7 +182,7 @@
                 context.coordinator.controller.detach(view)
                 context.coordinator.controller = controller
             }
-            controller.attach(view, enabled: enabled)
+            controller.attach(view, sceneIsActive: sceneIsActive, reduceMotion: reduceMotion)
         }
         static func dismantleUIView(_ view: ConfettiLayerView, coordinator: Coordinator) {
             coordinator.controller.detach(view)
@@ -153,7 +200,8 @@
         func body(content: Content) -> some View {
             content.overlay {
                 ControlledConfettiOverlay(
-                    controller: controller, enabled: !reduceMotion && scenePhase == .active
+                    controller: controller, sceneIsActive: scenePhase == .active,
+                    reduceMotion: reduceMotion
                 )
                 .allowsHitTesting(false)
                 .accessibilityHidden(true)

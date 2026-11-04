@@ -8,6 +8,7 @@ import UIKit
     var layoutReady: (() -> Void)?
     private var lastBurst: ConfettiBurst?
     private var cleanup: DispatchWorkItem?
+    private var completion: ConfettiCompletion?
     private var generation = 0
     private var gate: ConfettiLaunchGate?
     // Exactly representable reciprocal; longer than every bounded burst (under 305s).
@@ -36,10 +37,15 @@ import UIKit
     /// Play an explicit event, including repeated identical seeds. UIKit hosts own
     /// Reduce Motion/scene policy; the SwiftUI modifier supplies it automatically.
     public func play(burst: ConfettiBurst, colors: [UIColor]) {
+        play(burst: burst, colors: colors, completion: nil)
+    }
+
+    func play(burst: ConfettiBurst, colors: [UIColor], completion: ConfettiCompletion?) {
         cancel(); scheduledStartDelay = nil
+        self.completion = completion
         let started = CACurrentMediaTime()
         let particles = burst.particles(paletteCount: colors.count)
-        guard !particles.isEmpty else { return }
+        guard !particles.isEmpty else { complete(.notPresented); return }
         let colors = colors.prefix(16).map { $0.resolvedColor(with: traitCollection) }
         let scale = max(1, window?.screen.scale ?? traitCollection.displayScale)
         let shapes = Array(Set(particles.map(\.shape))).sorted { $0.rawValue < $1.rawValue }
@@ -107,7 +113,7 @@ import UIKit
             CATransaction.commit()
             self.scheduledStartDelay = CACurrentMediaTime() - started + lead
             self.gate = nil
-            self.scheduleCleanup(after: lifetime + lead)
+            self.scheduleCleanup(after: lifetime + lead, outcome: .finished)
         }
         self.gate = gate
         let ready = CABasicAnimation(keyPath: "opacity")
@@ -116,23 +122,28 @@ import UIKit
         particleLayerCount = particles.count
         CATransaction.commit()
         // Also bound detached/offscreen UIKit calls whose marker cannot run.
-        scheduleCleanup(after: lifetime + 2)
+        scheduleCleanup(after: lifetime + 2, outcome: .notPresented)
     }
 
-    private func scheduleCleanup(after duration: TimeInterval) {
+    private func scheduleCleanup(after duration: TimeInterval, outcome: ConfettiOutcome) {
         cleanup?.cancel()
         let token = generation
         let work = DispatchWorkItem { [weak self] in
-            guard let self, self.generation == token else { return }; self.cancel()
+            guard let self, self.generation == token else { return }; self.complete(outcome)
         }
         cleanup = work
         DispatchQueue.main.asyncAfter(deadline: .now() + duration, execute: work)
     }
-    public func cancel() {
+    public func cancel() { complete(.cancelled) }
+
+    private func complete(_ outcome: ConfettiOutcome) {
         generation += 1; gate = nil
         cleanup?.cancel(); cleanup = nil
         layer.sublayers?.forEach { $0.removeAllAnimations(); $0.removeFromSuperlayer() }
         particleLayerCount = 0
+        let completion = completion
+        self.completion = nil
+        completion?.resolve(outcome)
     }
     public override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? { nil }
     public override func layoutSubviews() { super.layoutSubviews(); layoutReady?() }
@@ -147,7 +158,9 @@ private final class ConfettiLaunchGate: NSObject, CAAnimationDelegate {
     init(_ ready: @escaping @MainActor () -> Void) { self.ready = ready }
     func animationDidStop(_ animation: CAAnimation, finished: Bool) {
         guard finished else { return }
-        Task { @MainActor in ready() }
+        // Transfer the actor-isolated closure, not this non-Sendable delegate.
+        let callback = ready
+        Task { @MainActor in callback() }
     }
 }
 

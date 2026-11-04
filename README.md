@@ -57,6 +57,79 @@ identity mutation, timer or seed management in the calling view. `cancel()` stop
 all work. Each new pop replaces the previous burst, rather than accumulating an
 unbounded particle queue. See `Examples/QuickStart.swift` for a complete view.
 
+### Launch from the button
+
+`pop(at: CGPoint(...))` already supports a custom origin in the overlay's local
+coordinates. For a button inside a larger screen, resolve its bounds in that
+screen's coordinate space and pass the center to `pop(at:)`. Keep the overlay
+on the full-size container so the paper can fly beyond the button.
+
+The [button-origin guide](Sources/PaperConfetti/PaperConfetti.docc/ButtonOrigin.md)
+includes a complete iOS 16+ anchor example; the same code is available in
+[Examples/ButtonOrigin.swift](Examples/ButtonOrigin.swift). It updates the
+measurement as layout changes and captures the position when tapped. Default
+`pop()` still launches from bottom-center; no new origin API is required.
+
+## Chain an action after a pop (draft)
+
+This local API draft is not part of the published 0.2.0 release. Existing calls
+stay the same. Add a completion closure only when another action needs to follow
+this particular celebration:
+
+```swift
+import SwiftUI
+import PaperConfetti
+
+struct CelebrationSheet: View {
+    @StateObject private var confetti = ConfettiController()
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        Button("Done") {
+            confetti.pop { outcome in
+                switch outcome {
+                case .finished, .reducedMotion:
+                    dismiss()
+                case .cancelled, .notPresented:
+                    break
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .confettiOverlay(confetti)
+    }
+}
+```
+
+The same closure works with `pop(at:configuration:completion:)` and
+`pop(_:colors:completion:)`. Each resolved request calls back once on the main
+actor, after cleanup and never inline during `pop()` or a SwiftUI update.
+
+| Outcome | Meaning |
+| --- | --- |
+| `finished` | The scheduled flight, including delayed cannons, reached its cleanup. |
+| `reducedMotion` | An active host omitted the animation for accessibility. Continue without waiting for invisible confetti. |
+| `cancelled` | The request was replaced, explicitly cancelled, or interrupted by a host/lifecycle change. |
+| `notPresented` | The host was unavailable, the burst had no valid particles, or the renderer never became ready. |
+
+The Bool still reports request acceptance, not completion. Even a rejected call
+reports its outcome through the closure. Before the first mount, an accepted
+request can wait for attachment/layout; cancel it if that presentation is
+abandoned. Releasing an unresolved request reports `cancelled`, provided caller
+captures do not retain its owner. Use weak captures where an owning reference
+type would otherwise retain itself through a pending callback.
+
+`finished` uses the renderer's existing scheduled cleanup, which includes a
+quarter-second safety margin. It is not an exact last-visible-pixel measurement
+from Core Animation. Outcomes describe that request; callers still own whether
+their screen or operation is current when a follow-up runs. Cancellation after an
+outcome has been resolved does not rewrite it.
+
+The draft intentionally adds one callback style, with no second async API,
+request handles, observer streams, or new appearance/accessibility settings.
+This completion surface is on the controller; the lower-level UIKit and
+value-driven overlay entry points are unchanged.
+
 ## Customize an ordinary pop
 
 ```swift

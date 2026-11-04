@@ -1,5 +1,95 @@
 # Validation and release review
 
+## Reviewed completion draft and button origins — November 4, 2026 (unreleased)
+
+The reviewed callback design is unchanged. The readiness delegate now captures
+its main-actor closure before starting a task, so the non-Sendable delegate itself
+is not transferred. This fixes a pre-existing strict Swift 6 compilation error in
+the renderer; it does not change the shared launch clock, physics or appearance.
+The package retains its existing tools requirement and language mode.
+
+The new [button-origin guide](Sources/PaperConfetti/PaperConfetti.docc/ButtonOrigin.md)
+and `Examples/ButtonOrigin.swift` demonstrate the existing `pop(at:)` API. The
+button publishes an anchor, and the full-size overlay host resolves its bounds
+into local coordinates. No UnitPoint overload, anchor registry or second async
+completion API was added.
+
+Final local validation used Xcode 27.2 (27B52), Swift 6.4.2 and the dedicated
+**PaperConfetti Example** iOS 27.2 simulator:
+
+- `python3 tools/validate.py --device 62A2F2EC-39AF-4EB9-A6D5-E23329BE6BD7` passed:
+  nine macOS physics tests, 33 iOS package tests, three example UI tests,
+  macOS/iOS Release builds and DocC.
+- The normal validation command now fully compiles/links the library with
+  `-swift-version 6 -strict-concurrency=complete -warnings-as-errors`, targeting
+  iOS 16, then compiles both standalone examples to object files. It also checks
+  that the complete DocC recipe matches the standalone source. Compilers older
+  than Swift 6 explicitly skip this additional check and record that fact.
+- The exact README `CelebrationSheet` example also compiled to an object file
+  against that strict Swift 6 library. The earlier draft's type-check-only result
+  did not expose the delegate error; the new code-generation check does.
+- Two isolated simulator tests compared the emitted origin with an independent
+  UIKit measurement of the button center after insets/resizing and scrolling.
+  Both passed. Only the button wrapper was instrumented to invoke its action and
+  expose a geometry marker; the recipe's anchor/state/resolution/action code was
+  retained. The scroll fixture keeps the reader and renderer outside its content.
+
+Evidence: `.artifacts/validation-20261104T165715Z/` contains the complete validation
+logs, xcresults, strict compiler artifacts and receipt. `.artifacts/origin-followup/`
+contains the focused runtime fixtures/log/result, exact README extraction and
+source hashes. The temporary test simulator was removed after validation.
+This is simulator/compiler evidence, not a new physical-device frame-timing or
+iOS 16 runtime result. Wordie, Disney Trivia, CI configuration, package/example
+versions and release tags remain unchanged. The completion API is still unreleased.
+
+## Completion callback draft — November 4, 2026 (unreleased)
+
+The local draft adds completion overloads to the two controller `pop` methods and
+one four-case `ConfettiOutcome`. Existing calls and typed method references keep
+their original signatures. Appearance, motion configuration, physics, public
+UIKit entry points, CI and app versions are unchanged. The callback API is the
+recommended first step; a second async API would also need a documented
+per-request task-cancellation contract and is intentionally deferred.
+
+Validated with Xcode 27.2 (27B52), Swift 6.4.2 and the dedicated **PaperConfetti
+Example** iOS 27.2 simulator:
+
+- Nine macOS physics tests and the macOS Release build passed.
+- All 33 iOS package tests passed, including 15 new completion tests covering
+  natural cleanup, delayed cannons, Reduce Motion, unavailable/empty requests,
+  replacement, callback reentrancy, repeated cancellation, pre-mount ownership,
+  scene changes, teardown, failed readiness and original method-reference types.
+- All three existing example UI tests passed. The Release simulator build and
+  DocC build passed; DocC reported no documentation warnings.
+- The final library and the exact new README example type-checked in Swift 6
+  mode with complete concurrency checking and warnings treated as errors,
+  targeting iOS 16.0. This does not claim a run on an iOS 16 device/runtime.
+
+Policy tests drive the real controller bridge inputs and a real UIKit renderer;
+SwiftUI's Reduce Motion environment value is read-only. The existing SwiftUI
+mount/scene/detach and example interaction tests remain in the validation suite.
+No simulator accessibility preferences were changed. New test code uses `weak
+var` for compatibility with the package's older Swift tools requirement; this
+installed compiler suggests `let` for those two test locals. Xcode also reports
+its existing test-framework deployment-target and App Intents metadata notices.
+
+Completion is deliberately conservative: `.finished` follows the existing
+scheduled lifetime (including the quarter-second cleanup margin), not a GPU
+last-pixel observation. `.reducedMotion` is separate from `.notPresented`, so an
+inactive/missing host cannot masquerade as an accessible successful completion.
+Already resolved outcomes are not rewritten by a later cancel. A pre-mount
+request can remain pending until attachment/layout, replacement or cancellation;
+callers must avoid retaining their owner through a pending callback. These are
+lifecycle checks, not new physical-device performance or frame-timing claims.
+
+Evidence is local and ignored: core logs in
+`.artifacts/validation-20261104T082208Z/`; successful iOS tests, example tests,
+Release/DocC builds and receipt in `.artifacts/validation-20261104T082443Z/`;
+strict compiler checks, the extracted README example and source hashes in
+`.artifacts/completion-api-draft/`. The first iOS attempt stopped at an invalid
+test-only environment override; the corrected harness passed all 33 tests.
+Those initial checks preceded the reviewed follow-up above; no package release was made.
+
 ## Native renderer 0.2.0 preflight — October 28, 2026
 
 The package now uses native particles by default, with flat/3D appearances. Local
