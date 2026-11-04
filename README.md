@@ -7,7 +7,7 @@ A dependency-free iOS 16+ confetti package for SwiftUI and UIKit. Thirteen paper
 shapes, lifelike tumble, and a simple `pop()` method. Core Animation handles the
 flight while your interface keeps responding.
 
-**Version 0.2.0** uses native particles, with 3D tumble by default and an optional flat appearance. The package is publicly available on GitHub. See
+**Version 0.3.0** adds completion callbacks, a button-origin recipe, and strict Swift 6 compilation checks. Native particles retain 3D tumble by default and an optional flat appearance. The package is publicly available on GitHub. See
 [validation results](VALIDATION.md) and the [release workflow](PUBLISHING.md).
 
 <img src="Documentation/showcase.png" width="320" alt="PaperConfetti example with a colorful burst over tappable controls">
@@ -25,7 +25,7 @@ In Xcode → Add Package Dependencies, enter
 product. SwiftPM consumers can use:
 
 ```swift
-.package(url: "https://github.com/twhitt14/PaperConfetti.git", from: "0.2.0")
+.package(url: "https://github.com/twhitt14/PaperConfetti.git", from: "0.3.0")
 ```
 
 Then add `.product(name: "PaperConfetti", package: "paperconfetti")` to your
@@ -70,10 +70,10 @@ includes a complete iOS 16+ anchor example; the same code is available in
 measurement as layout changes and captures the position when tapped. Default
 `pop()` still launches from bottom-center; no new origin API is required.
 
-## Chain an action after a pop (draft)
+## Chain an action after a pop
 
-This local API draft is not part of the published 0.2.0 release. Existing calls
-stay the same. Add a completion closure only when another action needs to follow
+Available in 0.3.0. Existing calls stay the same. Add a completion closure only
+when another action needs to follow
 this particular celebration:
 
 ```swift
@@ -125,7 +125,7 @@ from Core Animation. Outcomes describe that request; callers still own whether
 their screen or operation is current when a follow-up runs. Cancellation after an
 outcome has been resolved does not rewrite it.
 
-The draft intentionally adds one callback style, with no second async API,
+The API provides one callback style, with no second async API,
 request handles, observer streams, or new appearance/accessibility settings.
 This completion surface is on the controller; the lower-level UIKit and
 value-driven overlay entry points are unchanged.

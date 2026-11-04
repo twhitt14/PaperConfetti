@@ -4,7 +4,7 @@ Start a celebration at the tapped control while the paper flies across its conta
 
 `ConfettiController.pop(at:configuration:)` accepts a `CGPoint` in the overlay's
 local coordinate space. An ordinary `pop()` uses the bottom-center of that space.
-Both forms are available in 0.2.0; this recipe does not need the completion draft.
+Both forms have been available since 0.2.0; this recipe does not require completion callbacks.
 
 ## Measure the button in the overlay's coordinates
 

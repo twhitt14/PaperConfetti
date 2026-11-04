@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.3.0 — 2026-11-04
+
+- Optional controller completion callbacks report `finished`, `reducedMotion`,
+  `cancelled` or `notPresented` once on the main actor. Existing `pop()` calls and
+  typed method references remain compatible. Completion includes delayed cannons
+  and cleanup; it is not a last-visible-pixel measurement.
+- Fix a pre-existing readiness-delegate capture error during full strict Swift 6
+  compilation. The renderer's shared launch clock and particle physics are unchanged.
+- Add a complete button-anchor origin recipe using the existing `pop(at:)` API.
+  Validation compiles the library and examples in strict Swift 6 and checks that
+  the standalone origin example matches its DocC source.
+- Configure Swift Package Index documentation and compatibility badges, and add
+  a launch-speed comparison to the example app.
+- Improve local profiling/recording recovery and document the native renderer's
+  measured device results. Performance measurements remain version/device-specific.
+
 ## 0.2.0 — 2026-10-28
 
 - Native `CAEmitterLayer` rendering is now the default, with `.threeDimensional`

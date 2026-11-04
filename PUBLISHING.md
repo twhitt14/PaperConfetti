@@ -5,10 +5,9 @@ PaperConfetti is a Git-hosted Swift package at
 `PaperConfetti`; SwiftPM derives the dependency identity `paperconfetti` from
 that URL. It has no runtime dependencies.
 
-The repository is currently private. A version tag and GitHub release are usable
-by authorized collaborators without changing visibility. Only make the repository
-public when Trevor explicitly requests it. No package registry or App Store
-upload is needed. [Apple's publishing guide](https://developer.apple.com/documentation/xcode/publishing-a-swift-package-with-xcode).
+The repository is public. Consumers use a semantic version tag from the GitHub
+URL; no package registry or App Store upload is needed. Do not change repository
+visibility as part of a release. [Apple's publishing guide](https://developer.apple.com/documentation/xcode/publishing-a-swift-package-with-xcode).
 
 ## Publish a version
 
@@ -45,8 +44,9 @@ iPhones and an older supported device/OS with Instruments. Check rapid repeat an
 cancel, background/resume, Reduce Motion, touch-through scrolling and cleanup.
 Record these as device results separately from simulator measurements.
 
-After an explicitly authorized visibility change, update the private-access note
-in README and optionally submit the public repository to Swift Package Index.
+The public package uses `.spi.yml` for Swift Package Index documentation builds.
+After release, check the index for the new version and its documentation; indexing
+is separate from whether SwiftPM can resolve the Git tag.
 Wordie's package dependency is a separate app change; a PaperConfetti release
 does not change or deploy Wordie or any other application.
 
