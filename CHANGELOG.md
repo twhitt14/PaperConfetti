@@ -2,6 +2,9 @@
 
 ## 0.3.0 — 2026-11-04
 
+- Make comparison-app coordinate conversions explicit for Xcode 16.4; the new
+  release checks caught an older-compiler arithmetic ambiguity.
+
 - Optional controller completion callbacks report `finished`, `reducedMotion`,
   `cancelled` or `notPresented` once on the main actor. Existing `pop()` calls and
   typed method references remain compatible. Completion includes delayed cannons

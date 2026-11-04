@@ -215,8 +215,8 @@ struct ArticleDemoView: View {
                     try await Task.sleep(nanoseconds: 2_000_000_000)
                     let c = clips[i]
                     let burst = ConfettiBurst(cannons: (0..<5).map { column in
-                        ConfettiEmitter(x: size.width * (Double(column) + 0.5) / 5,
-                                        y: size.height * 0.62, delay: Double(column) * 0.1,
+                        ConfettiEmitter(x: Double(size.width) * (Double(column) + 0.5) / 5,
+                                        y: Double(size.height) * 0.62, delay: Double(column) * 0.1,
                                         count: c.count / 5, angle: 90, spread: 40)
                     }, seed: 2026, radius: 130, fall: 320, size: c.festive ? 10 : 7,
                        shapes: c.festive ? ConfettiShape.festive : ConfettiShape.classic)
