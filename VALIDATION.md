@@ -27,7 +27,9 @@ PaperConfetti Example / iOS 27.2 simulator:
 - All five example interaction tests passed, including real taps through the
   public UIKit host, cancellation, and background/foreground behavior. The UIKit
   fixture is shared with the benchmark app so its reused tests exercise the same
-  route, rather than falling into Visual Review.
+  route, rather than falling into Visual Review. A repeated run caught a tap
+  during the foreground transition; the test now waits for cancellation delivery
+  and a hittable control. Five consecutive foreground repetitions then passed.
 - Strict Swift 6 code generation targeting iOS 16 passed for the library and four
   complete public-API examples. All 102 authored public symbols have comments;
   DocC passed with warnings treated as errors. A fresh Release simulator app

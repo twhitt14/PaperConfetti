@@ -18,6 +18,12 @@ final class PaperConfettiExampleUITests: XCTestCase {
         XCTAssertEqual(app.staticTexts["uikit-status"].label, "Tap 2 · playing")
         XCUIDevice.shared.press(.home)
         app.activate()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 5))
+        // Activation can return before the foreground transition is interactive.
+        // Wait for both the callback and a real tap target, not a fixed delay.
+        expectation(for: cancelled, evaluatedWith: app.staticTexts["uikit-status"])
+        expectation(for: NSPredicate(format: "hittable == true"), evaluatedWith: app.buttons["Tap through"])
+        waitForExpectations(timeout: 5)
         app.buttons["Tap through"].tap()
         XCTAssertEqual(app.staticTexts["uikit-status"].label, "Tap 3 · idle")
         app.buttons["Pop"].tap()
