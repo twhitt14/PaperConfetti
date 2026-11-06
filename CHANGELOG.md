@@ -8,7 +8,7 @@
 - Harden extreme finite angle conversion and invalid shape-preview bounds. Stop shape selection after the first 32 distinct values.
 - Document every authored public symbol, parameter limits, lifecycle outcomes, ownership, and privacy. Compile complete SwiftUI/UIKit examples and fail validation for missing public documentation or DocC warnings.
 - Bundle explicit privacy declarations alongside the existing attribution. Add regression coverage for resources, palettes, custom holes, source movement/replacement/removal, deferred layout, UIKit foreground/background behavior, and input pass-through.
-- Repair individual-shape profiling scenarios after the 0.4 value-type migration and validate all 16 named shapes. Existing physical-performance results retain their measured release labels; this release makes no new device-performance claim.
+- Repair individual-shape profiling scenarios after the 0.4 value-type migration and validate all 16 named shapes. Make texture audits reflect used combinations and label their reconstruction scope. Existing physical-performance results retain their measured release labels; this release makes no new device-performance claim.
 
 ## 0.4.0 — 2026-11-05
 

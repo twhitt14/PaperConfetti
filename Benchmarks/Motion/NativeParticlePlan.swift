@@ -40,6 +40,16 @@ enum NativeParticlePlan {
         Int((particle.phase / (2 * .pi)) * Double(poseCount)) % poseCount
     }
 
+    // Reconstruct the shipping renderer's used shape/color/pose inventory outside
+    // measured trials. This is not a readback of resident cache or GPU allocations.
+    static func usedTextureIndices(_ particles: [ConfettiParticle], shapes: [ConfettiShape]) -> Set<Int> {
+        let indices = Dictionary(uniqueKeysWithValues: shapes.enumerated().map { ($1, $0) })
+        return Set(particles.map { particle in
+            guard let shape = indices[particle.shape] else { preconditionFailure("Unknown fixture shape") }
+            return (particle.color * shapes.count + shape) * poseCount + poseIndex(for: particle)
+        })
+    }
+
     static func groups(_ particles: [ConfettiParticle], shared: Bool = false) -> [NativeFlightGroup] {
         // Default: each piece owns its complete timing/path, including independent descent.
         // The old shared-flight compromise remains a separately labeled diagnostic only.

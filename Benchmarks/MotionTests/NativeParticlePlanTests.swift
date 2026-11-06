@@ -75,6 +75,23 @@ final class NativeParticlePlanTests: XCTestCase {
             (0.8...1.2).contains(StudyFlight.fallDuration($0) / (450 / (200 * $0.fallSpeed)))
         })
     }
+    func testTextureInventoryCountsUsedCombinationsInsteadOfWholePalette() {
+        let shapes = ConfettiShape.festive
+        XCTAssertTrue(NativeParticlePlan.usedTextureIndices([], shapes: shapes).isEmpty)
+        let original = particles()
+        let used = NativeParticlePlan.usedTextureIndices(original, shapes: shapes)
+        XCTAssertLessThan(used.count, shapes.count * 3 * NativeParticlePlan.poseCount)
+        XCTAssertLessThanOrEqual(used.count, original.count)
+        let piece = original[0]
+        let sparse = NativeParticlePlan.usedTextureIndices(Array(repeating: piece, count: 720), shapes: shapes)
+        XCTAssertEqual(sparse.count, 1)
+        let index = sparse.first!
+        XCTAssertEqual(index / NativeParticlePlan.poseCount / shapes.count, piece.color)
+        XCTAssertEqual(shapes[index / NativeParticlePlan.poseCount % shapes.count], piece.shape)
+        XCTAssertEqual(index % NativeParticlePlan.poseCount, NativeParticlePlan.poseIndex(for: piece))
+        XCTAssertEqual(used, NativeParticlePlan.usedTextureIndices(Array(original.reversed()), shapes: shapes))
+    }
+
     func testEmptyAndSingleInputs() {
         XCTAssertTrue(NativeParticlePlan.groups([]).isEmpty)
         let p = particles()[0], group = NativeParticlePlan.groups([p])[0]

@@ -14,6 +14,8 @@ when a controller changes, UIKit decoding failure, unnecessary unused texture
 preparation, extreme finite angle conversion, and invalid preview bounds.
 Individual-shape benchmark fixtures now resolve explicit shape names; the former
 enum-description lookup no longer worked after 0.4 made shapes a value type.
+The texture audit now reconstructs used combinations for the shipping renderer,
+with an explicit scope label instead of reporting the whole palette as allocated.
 
 Local evidence uses Xcode 27.2 (27B52), Swift 6.4.2, and the dedicated standard
 PaperConfetti Example / iOS 27.2 simulator:
@@ -30,7 +32,7 @@ PaperConfetti Example / iOS 27.2 simulator:
   complete public-API examples. All 102 authored public symbols have comments;
   DocC passed with warnings treated as errors. A fresh Release simulator app
   embeds byte-identical attribution and privacy resources.
-- All 11 benchmark motion tests and 39 Python regression tests passed. The full
+- All 12 benchmark motion tests and 39 Python regression tests passed. The full
   profiling simulator smoke completed and all 16 benchmark interaction/pixel
   tests passed, including all five cannons at 5,760 pieces, delayed commit/replay,
   the negative birth-window control, and all 5,760 requested grid positions.

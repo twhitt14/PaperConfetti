@@ -111,6 +111,7 @@ import SwiftUI
 
     @discardableResult func play(_ spec: StudyScenario, burst: ConfettiBurst) -> [String: Any] {
         cancel()
+        usingProductionNative = spec.renderer == "emitter" && spec.sharedFlight != true && !ProcessInfo.processInfo.arguments.contains("--native-legacy-clock")
         guard !UIAccessibility.isReduceMotionEnabled, spec.renderer != "none" else { lastStats = ["requested_particles": 0]; return lastStats }
         let start = CACurrentMediaTime()
         if spec.renderer == "paper" {
@@ -119,7 +120,6 @@ import SwiftUI
                          "particle_layers": production.particleLayerCount, "position_samples": 49, "native_count_is_estimate": false]
             return lastStats
         }
-        usingProductionNative = spec.renderer == "emitter" && spec.sharedFlight != true && !ProcessInfo.processInfo.arguments.contains("--native-legacy-clock")
         if usingProductionNative {
             var b = burst; b.appearance = spec.native3D == true ? .threeDimensional : .flat
             CATransaction.begin(); CATransaction.setDisableActions(true)
@@ -386,7 +386,11 @@ import SwiftUI
         guard spec.renderer != "none" else { return ["textures": [], "texture_bytes": 0] }
         let textures = images(spec)
         let shapes = spec.renderer == "paper" ? ConfettiShape.allCases : spec.shapeSet
-        let details: [[String: Any]] = textures.enumerated().map { offset, image in
+        let all = usingProductionNative ? burst.particles(paletteCount: Self.colors.count) : StudyPopulation.particles(burst, paletteCount: Self.colors.count)
+        let usedPoses = usingProductionNative ? NativeParticlePlan.usedTextureIndices(all, shapes: shapes) : nil
+        let usedBases = usedPoses.map { Set($0.map { $0 / NativeParticlePlan.poseCount }) }
+        let inventory = textures.enumerated().filter { usedBases?.contains($0.offset) ?? true }
+        let details: [[String: Any]] = inventory.map { offset, image in
             let width = image.width, height = image.height
             var rgba = [UInt8](repeating: 0, count: width * height * 4)
             rgba.withUnsafeMutableBytes { data in
@@ -395,13 +399,12 @@ import SwiftUI
                 c.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
             }
             let nonzero = stride(from: 3, to: rgba.count, by: 4).filter { rgba[$0] > 0 }.count
-            return ["shape": String(describing: shapes[offset % shapes.count]), "color": offset / shapes.count,
+            return ["shape": shapes[offset % shapes.count].name, "color": offset / shapes.count,
                     "width_px": width, "height_px": height, "bytes": image.bytesPerRow * height,
                     "nontransparent_fraction": Double(nonzero) / Double(width * height)]
         }
         var maxPositionError = 0.0, maxOpacityError = 0.0, maxGroupingError = 0.0
         var sampleCounts: [Int] = []
-        let all = usingProductionNative ? burst.particles(paletteCount: 3) : StudyPopulation.particles(burst, paletteCount: 3)
         func inspect(track: StudyTrack, duration: Double,
                      position: (Double) -> CGPoint, opacity: (Double) -> Double) {
             sampleCounts.append(track.times.count)
@@ -440,10 +443,12 @@ import SwiftUI
                         position: { StudyFlight.position(p, at: $0) }, opacity: { p.opacity(at: $0) })
             }
         }
-        let poses = spec.renderer == "emitter" ? nativeImages(textures, spec: spec) : []
+        let palettePoses = spec.renderer == "emitter" ? nativeImages(textures, spec: spec) : []
+        let poses = palettePoses.enumerated().filter { usedPoses?.contains($0.offset) ?? true }.map(\.element)
         defer { if usingProductionNative { nativePoseCache = nil } }
         return ["trajectory_audit_scope": spec.renderer == "emitter" ? "parabolic-v5-soft-edge-excludes-native-birth-drift-and-tilt" : "individual-particles",
-                "textures": details, "texture_bytes": textures.reduce(0) { $0 + $1.bytesPerRow * $1.height },
+                "texture_inventory_scope": usingProductionNative ? "reconstructed-used-flight-combinations" : "diagnostic-full-palette",
+                "textures": details, "texture_bytes": inventory.reduce(0) { $0 + $1.element.bytesPerRow * $1.element.height },
                 "native_pose_texture_count": poses.count,
                 "native_pose_texture_bytes": poses.reduce(0) { $0 + $1.bytesPerRow * $1.height },
                 "grouping_max_error_points": spec.renderer == "emitter" ? maxGroupingError as Any : NSNull(),
