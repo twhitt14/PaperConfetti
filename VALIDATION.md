@@ -1,6 +1,6 @@
 # Validation and release review
 
-## Next API candidate — November 5, 2026 (unpublished)
+## 0.4.0 release preflight — November 5, 2026
 
 - Final package validation: `.artifacts/validation-20261106T025636Z/` on Xcode 27.2 / Swift 6.4.2. All 14 macOS core tests, 45 iOS package tests and four example interaction tests passed, along with strict Swift 6 compilation targeting iOS 16, Release builds and DocC. iOS 16 was the compilation minimum, not an installed runtime tested here.
 - Added checks cover custom-path identity/complexity and tiny raster sizes, deterministic launch speed and full-width showers, natural shower cleanup, relative origins, pending/replacement outcomes, UIKit input pass-through, and custom-shape/shower interactions.
@@ -8,7 +8,7 @@
 - Inspected `simctl` screenshots of the normal burst, custom hearts and shower under `.artifacts/captures/`. The capture tool explicitly selects the primary display, including simulators with more than one display.
 - The full benchmark smoke run passed its scenario, gesture, example and renderer-study checks, but two native pixel checks failed on an automatically selected dual-display runtime. Its screenshot coordinate assumptions merged the rightmost cannon into another column. After fixing runtime selection, all three native pixel tests passed on the standard iPhone 18 Pro / iOS 27.2 simulator, including five cannons at 5,760 pieces, delayed commit/replay, the negative control and all 5,760 grid slots. Evidence: `.artifacts/profile-20261106T030141Z-aadb8f/` (retained failure) and `.artifacts/api-native-pixel-tests.xcresult` (passing rerun). Two new runner tests protect runtime selection.
 - This candidate retains the native flat/3D renderer and iOS 16 minimum. The published device-performance tables remain measurements of their labeled versions; no new physical profiling was performed for these API changes.
-- Publication, hosted release checks and Wordie's exact remote dependency update are pending explicit publication approval. The example app version/build were not changed.
+- Trevor authorized publication as 0.4.0. Hosted release checks, fresh-consumer verification and final release evidence are linked in the GitHub release. The example app version/build were not changed.
 
 ## 0.3.0 release preflight — November 4, 2026
 

@@ -1,6 +1,6 @@
-# Migrating from 0.3
+# Migrating from 0.3 to 0.4
 
-This development revision intentionally refines the public API before 1.0.
+Version 0.4 intentionally refines the public API before 1.0.
 iOS 16 and `@StateObject` remain supported. Plain `confetti.pop()` and
 `.confettiOverlay(confetti)` integrations need no changes.
 

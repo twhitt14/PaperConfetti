@@ -7,9 +7,10 @@ A dependency-free iOS 16+ confetti package for SwiftUI and UIKit. Thirteen paper
 shapes, custom silhouettes, lifelike tumble, and simple `pop()` and `drop()` methods.
 Core Animation handles flight while your interface keeps responding.
 
-**Development API:** the examples below describe the next release. The latest
-published version is 0.3.0; see [migration notes](Documentation/MIGRATION.md) for
-the deliberate pre-1.0 API changes. No new device-performance claims are made here.
+**Version 0.4.0** adds custom shapes, top-down showers, source-view origins and a
+clearer shared configuration API. iOS 16 remains supported. This is a pre-1.0
+source-breaking update; see the [migration guide](Documentation/MIGRATION.md).
+The device-performance measurements below retain their original version labels.
 
 <img src="Documentation/showcase.png" width="320" alt="PaperConfetti example with a colorful burst over tappable controls">
 
@@ -19,6 +20,13 @@ Add `https://github.com/twhitt14/PaperConfetti.git` in Xcode, selecting the
 **PaperConfetti** product. Use a tagged release for shipping apps. The package
 requires iOS/iPadOS 16+ and Swift tools 5.9+. It has no runtime dependencies.
 The macOS 13+ target supports core tests; there is no AppKit renderer.
+
+```swift
+.package(url: "https://github.com/twhitt14/PaperConfetti.git", exact: "0.4.0")
+```
+
+Add `.product(name: "PaperConfetti", package: "paperconfetti")` to the target, then
+`import PaperConfetti`. The exact pin keeps pre-1.0 API updates intentional.
 
 Open `Examples/PaperConfettiExample.xcodeproj`, choose **PaperConfettiExample**,
 and run. Simulator needs no signing setup; for an iPhone, choose your own team.
