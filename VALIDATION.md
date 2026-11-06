@@ -1,5 +1,59 @@
 # Validation and release review
 
+## 1.0.0 release review — November 6, 2026
+
+The review covered the public API, all runtime source, resources and licensing,
+DocC/README examples, tests, profiling fixtures, and publication tooling. The 0.4
+API remains source compatible; the compiler symbol comparison found no removed
+or changed declarations, and the UIKit decoding initializer is additive.
+`ConfettiConfiguration` also gains `Sendable`. The documented 1.x contract
+retains iOS 16 and Swift tools 5.9.
+
+The review corrected color-space/pattern cache collisions, source-anchor loss
+when a controller changes, UIKit decoding failure, unnecessary unused texture
+preparation, extreme finite angle conversion, and invalid preview bounds.
+Individual-shape benchmark fixtures now resolve explicit shape names; the former
+enum-description lookup no longer worked after 0.4 made shapes a value type.
+
+Local evidence uses Xcode 27.2 (27B52), Swift 6.4.2, and the dedicated standard
+PaperConfetti Example / iOS 27.2 simulator:
+
+- 19 macOS core tests and 57 iOS package tests passed. New regressions cover
+  configuration boundaries, distinct-shape limits, resources, pattern/wide-gamut
+  and adaptive colors, shared textures, custom holes, source movement/removal/
+  controller replacement, deferred layout, and archive decoding.
+- All five example interaction tests passed, including real taps through the
+  public UIKit host, cancellation, and background/foreground behavior. The UIKit
+  fixture is shared with the benchmark app so its reused tests exercise the same
+  route, rather than falling into Visual Review.
+- Strict Swift 6 code generation targeting iOS 16 passed for the library and four
+  complete public-API examples. All 102 authored public symbols have comments;
+  DocC passed with warnings treated as errors. A fresh Release simulator app
+  embeds byte-identical attribution and privacy resources.
+- All 11 benchmark motion tests and 39 Python regression tests passed. The full
+  profiling simulator smoke completed and all 16 benchmark interaction/pixel
+  tests passed, including all five cannons at 5,760 pieces, delayed commit/replay,
+  the negative birth-window control, and all 5,760 requested grid positions.
+- Simulator screenshots of a normal burst, custom hearts and the top shower
+  were inspected. Input pass-through and accessibility policy have automated
+  coverage; screenshots are not frame-delivery measurements.
+- A credential-pattern scan of reachable history plus manual source/manifest/
+  licensing review found no publication issues. Original attribution is intact,
+  the runtime still has no third-party dependencies, and app/example versions
+  remain unchanged.
+
+Primary evidence is ignored under `.artifacts/validation-20261106T072054Z/`,
+`.artifacts/profile-20261106T072319Z-41f2f0/`, `.artifacts/review-1.0-*.log`,
+`.artifacts/review-1.0-api/`, and `.artifacts/captures/`. Earlier failed regression
+and harness attempts are retained separately; only the corrected results above
+are passes. Hosted dev/main/tag CI and exact-tag fresh-consumer verification are
+required separately and linked in the GitHub release.
+
+This is not new physical-device performance profiling or an iOS 16 runtime run.
+The README's device results keep their original version/device labels. Swift
+Package Index indexing is separate from successful Git-tag resolution; DocC can
+also be built locally with Xcode's Product → Build Documentation command.
+
 ## 0.4.0 release preflight — November 5, 2026
 
 - Final package validation: `.artifacts/validation-20261106T025636Z/` on Xcode 27.2 / Swift 6.4.2. All 14 macOS core tests, 45 iOS package tests and four example interaction tests passed, along with strict Swift 6 compilation targeting iOS 16, Release builds and DocC. iOS 16 was the compilation minimum, not an installed runtime tested here.

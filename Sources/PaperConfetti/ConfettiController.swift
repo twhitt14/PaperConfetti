@@ -4,21 +4,71 @@ import UIKit
 
 /// The same paper, palette and flight settings work with one cannon, many cannons,
 /// or a full-width shower. Distances and particle size are in overlay-local points.
-public struct ConfettiConfiguration {
+public struct ConfettiConfiguration: Sendable {
+    /// The palette, resolved against the host’s traits when playback starts.
+    ///
+    /// Only the first 16 entries are used. An empty palette emits nothing.
     public var colors: [Color]
+    /// The paper silhouettes, using the first 32 distinct values.
+    ///
+    /// Duplicate geometry is ignored. An empty collection emits nothing.
     public var shapes: [ConfettiShape]
+    /// The number of pieces in a single cannon or shower.
+    ///
+    /// Negative counts act as zero; at most 6,000 pieces are emitted per event.
+    /// Explicit emitters supply their own counts instead of this value.
     public var particleCount: Int
-    /// Nominal reach. The distribution includes a softly scattered outer tail.
+    /// The nominal reach in points, greater than zero and at most 5,000.
+    ///
+    /// The distribution includes a softly scattered outer tail, so this isn't a
+    /// hard boundary. A shower ignores the launch but still validates this setting.
     public var launchDistance: Double
-    /// Distance descended from each particle's peak.
+    /// The descent distance from the peak, greater than zero and at most 5,000 points.
+    ///
+    /// Showers descend at least the overlay height, even if this value is smaller.
     public var fallDistance: Double
+    /// The nominal paper size in points, from 1 through 64.
+    ///
+    /// Built-in streamers may be wider than this value. Motion size variation
+    /// and shape proportions determine each piece’s final size.
     public var particleSize: Double
+    /// The single cannon’s direction; 90 degrees points up.
+    ///
+    /// Explicit emitters supply their own direction. Showers ignore this value.
     public var emissionAngle: ConfettiAngle
+    /// The single cannon’s full fan width, normalized to 0–360 degrees.
+    ///
+    /// The absolute value is used. Explicit emitters supply their own spread;
+    /// showers ignore this value.
     public var spread: ConfettiAngle
+    /// Whether paper spins flat or also tumbles in depth.
     public var appearance: ConfettiAppearance
+    /// The ascent, rotation, size variation, flutter, and fading settings.
     public var motion: ConfettiMotion
+    /// The random base descent speed for each distinct shape, within 0.25–4.
+    ///
+    /// One multiplier is sampled per shape per event. Each particle also receives
+    /// independent timing variation. Equal bounds give all shapes the same base speed.
     public var fallSpeedMultiplierRange: ClosedRange<Double>
 
+    /// Creates a shared configuration for cannons and showers.
+    ///
+    /// Numeric values and range bounds must be finite. Invalid flight settings
+    /// emit nothing and resolve a mounted request as ``ConfettiOutcome/notPresented``.
+    /// See <doc:Configuration> for the complete limits and replacement behavior.
+    ///
+    /// - Parameters:
+    ///   - colors: The palette. Defaults to cyan, pink, and yellow.
+    ///   - shapes: The silhouettes. Defaults to the 13 festive shapes.
+    ///   - particleCount: The single-cannon or shower count. Defaults to 80.
+    ///   - launchDistance: The nominal reach in points. Defaults to 160.
+    ///   - fallDistance: The descent distance in points. Defaults to 360.
+    ///   - particleSize: The nominal paper size in points. Defaults to 10.
+    ///   - emissionAngle: The single-cannon direction. Defaults to 90 degrees.
+    ///   - spread: The full single-cannon fan width. Defaults to 70 degrees.
+    ///   - fallSpeedMultiplierRange: The range of per-shape base fall speeds.
+    ///   - motion: Advanced motion settings. Defaults to lifelike rise and tumble.
+    ///   - appearance: Flat spin or three-dimensional tumble. Defaults to tumble.
     public init(colors: [Color] = [.cyan, .pink, .yellow], shapes: [ConfettiShape] = ConfettiShape.festive,
                 particleCount: Int = 80, launchDistance: Double = 160, fallDistance: Double = 360,
                 particleSize: Double = 10, emissionAngle: ConfettiAngle = .degrees(90),
@@ -32,6 +82,7 @@ public struct ConfettiConfiguration {
 
     /// An editable starting point for a restrained celebration.
     public static var subtle: Self { .init(particleCount: 40, launchDistance: 100, particleSize: 7) }
+    /// An editable starting point using the default palette, 13 shapes, and 80 pieces.
     public static var festive: Self { .init() }
 
     func burst(emitters: [ConfettiEmitter], seed: UInt64?) -> ConfettiBurst {
@@ -45,7 +96,12 @@ public struct ConfettiConfiguration {
 
 /// Lifecycle state, rather than a frame-by-frame progress signal.
 public enum ConfettiPlaybackState: Equatable, Sendable {
-    case idle, pending, playing
+    /// No request is queued or playing.
+    case idle
+    /// A request is waiting for its first host or a nonzero layout.
+    case pending
+    /// A request is being prepared or its scheduled flight is active.
+    case playing
 }
 
 /// Own with `@StateObject`, attach `.confettiOverlay(controller)`, then call `pop()`.
@@ -72,10 +128,17 @@ public enum ConfettiPlaybackState: Equatable, Sendable {
     @Published public private(set) var playbackState = ConfettiPlaybackState.idle
     /// Includes scheduled flight and preparation, not a render-server pixel readback.
     public var isPlaying: Bool { (renderer?.particleLayerCount ?? 0) > 0 }
+    /// Whether a request is waiting for its first host or a nonzero layout.
     public var isPending: Bool { currentState == .pending }
+    /// Creates an idle controller for one SwiftUI overlay.
     public init() {}
 
     /// Emits from bottom-center by default. Completion describes the actual outcome.
+    /// - Parameters:
+    ///   - origin: A point in overlay coordinates, or `nil` for the bottom center.
+    ///   - configuration: The paper and flight settings.
+    ///   - completion: An optional once-only main-actor callback, delivered asynchronously.
+    ///     A pre-mount request can remain pending until layout or cancellation.
     public func pop(at origin: CGPoint? = nil, configuration: ConfettiConfiguration = .init(),
                     completion: (@MainActor (ConfettiOutcome) -> Void)? = nil) {
         enqueue(configuration: configuration, completion: completion) { bounds in
@@ -87,6 +150,11 @@ public enum ConfettiPlaybackState: Equatable, Sendable {
 
     /// Each emitter supplies its position, count, direction and delay. Shared paper
     /// and motion settings are exactly the same configuration used by an ordinary pop.
+    /// - Parameters:
+    ///   - emitters: Up to 32 cannons, considered in order, with a shared 6,000-piece budget.
+    ///   - configuration: Shared paper and motion settings; emitter counts and angles take precedence.
+    ///   - seed: A reproducible seed for this package version, or `nil` for a new random event.
+    ///   - completion: An optional once-only callback, delivered asynchronously on the main actor.
     public func pop(emitters: [ConfettiEmitter], configuration: ConfettiConfiguration = .init(),
                     seed: UInt64? = nil, completion: (@MainActor (ConfettiOutcome) -> Void)? = nil) {
         enqueue(configuration: configuration, completion: completion) { _ in
@@ -95,6 +163,11 @@ public enum ConfettiPlaybackState: Equatable, Sendable {
     }
 
     /// Resolves a normalized position in the overlay when this event starts.
+    /// - Parameters:
+    ///   - anchor: A normalized location in the overlay, resolved when playback starts.
+    ///     Values outside 0–1 are allowed for offscreen origins; coordinates must be finite.
+    ///   - configuration: The paper and flight settings.
+    ///   - completion: An optional once-only callback, delivered asynchronously on the main actor.
     public func pop(from anchor: UnitPoint, configuration: ConfettiConfiguration = .init(),
                     completion: (@MainActor (ConfettiOutcome) -> Void)? = nil) {
         enqueue(configuration: configuration, completion: completion) { bounds in
@@ -106,6 +179,11 @@ public enum ConfettiPlaybackState: Equatable, Sendable {
 
     /// Launches at a view registered by `.confettiSource(id:controller:)`. Missing
     /// sources report `.notPresented`; no stale position or guessed fallback is used.
+    /// - Parameters:
+    ///   - id: A unique source ID registered under this controller's overlay.
+    ///     Its center is captured at the time of the call. A missing source leaves any active event alone.
+    ///   - configuration: The paper and flight settings.
+    ///   - completion: An optional once-only callback, delivered asynchronously on the main actor.
     public func pop(fromSource id: some Hashable, configuration: ConfettiConfiguration = .init(),
                     completion: (@MainActor (ConfettiOutcome) -> Void)? = nil) {
         guard let origin = sources[AnyHashable(id)] else {
@@ -119,6 +197,12 @@ public enum ConfettiPlaybackState: Equatable, Sendable {
     /// emission window (0...10 seconds), not the total flight time. Paper starts just
     /// above the overlay, descends at least its height, and fades before cleanup.
     /// Like pop, this replaces the previous event on this controller.
+    /// - Parameters:
+    ///   - configuration: Shared paper, count, and descent settings. Direction and ascent don't affect a shower.
+    ///   - duration: The finite emission window in seconds, from zero through 10.
+    ///     An invalid duration leaves any active event alone and reports `notPresented`.
+    ///   - seed: A reproducible seed for this package version, or `nil` for a new random event.
+    ///   - completion: An optional once-only callback, delivered asynchronously on the main actor.
     public func drop(configuration: ConfettiConfiguration = .init(), duration: TimeInterval = 2,
                      seed: UInt64? = nil, completion: (@MainActor (ConfettiOutcome) -> Void)? = nil) {
         guard duration.isFinite, (0...10).contains(duration) else {
@@ -133,6 +217,10 @@ public enum ConfettiPlaybackState: Equatable, Sendable {
         }
     }
 
+    /// Cancels the queued or active request and removes all flying paper.
+    ///
+    /// Repeated calls are safe. A pending completion receives
+    /// ``ConfettiOutcome/cancelled`` once, asynchronously on the main actor.
     public func cancel() {
         currentRequest = nil
         pending?.completion.resolve(.cancelled)
@@ -222,6 +310,7 @@ public enum ConfettiPlaybackState: Equatable, Sendable {
 
 private struct ControlledConfettiOverlay: UIViewRepresentable {
     let controller: ConfettiController
+    let sources: [AnyHashable: CGPoint]
     let sceneIsActive: Bool
     let reduceMotion: Bool
     func makeUIView(context: Context) -> ConfettiLayerView { ConfettiLayerView() }
@@ -231,6 +320,7 @@ private struct ControlledConfettiOverlay: UIViewRepresentable {
             context.coordinator.controller.detach(view)
             context.coordinator.controller = controller
         }
+        controller.updateSources(sources)
         controller.attach(view, sceneIsActive: sceneIsActive, reduceMotion: reduceMotion)
     }
     static func dismantleUIView(_ view: ConfettiLayerView, coordinator: Coordinator) { coordinator.controller.detach(view) }
@@ -262,9 +352,8 @@ private struct ConfettiOverlayModifier: ViewModifier {
                     let rect = geometry[anchor]
                     return (key.id, CGPoint(x: rect.midX, y: rect.midY))
                 })
-                ControlledConfettiOverlay(controller: controller, sceneIsActive: scenePhase == .active, reduceMotion: reduceMotion)
-                    .onAppear { controller.updateSources(centers) }
-                    .onChange(of: centers) { controller.updateSources($0) }
+                ControlledConfettiOverlay(controller: controller, sources: centers,
+                                          sceneIsActive: scenePhase == .active, reduceMotion: reduceMotion)
             }
             .allowsHitTesting(false).accessibilityHidden(true)
         }
@@ -272,10 +361,20 @@ private struct ConfettiOverlayModifier: ViewModifier {
 }
 extension View {
     /// Mount on a stable full-size container, outside scrolling/keyboard-driven layouts.
+    /// The overlay passes touches through, hides decorative paper from accessibility,
+    /// and handles Reduce Motion and scene changes. Use a different controller for
+    /// each overlay; attaching one controller to multiple hosts isn't supported.
+    ///
+    /// - Parameter controller: The screen-owned controller, usually stored with `@StateObject`.
+    /// - Returns: The view with a decorative confetti host in its local coordinate system.
     public func confettiOverlay(_ controller: ConfettiController) -> some View {
         modifier(ConfettiOverlayModifier(controller: controller))
     }
     /// Registers this view's center with a controller attached to an ancestor container.
+    /// - Parameters:
+    ///   - id: An ID unique among this controller's source views.
+    ///   - controller: The controller mounted on an ancestor with `confettiOverlay(_:)`.
+    /// - Returns: The view with a source anchor that follows layout and scrolling.
     public func confettiSource(id: some Hashable, controller: ConfettiController) -> some View {
         anchorPreference(key: ConfettiSourcePreferences.self, value: .bounds) {
             [ConfettiSourceID(controller: ObjectIdentifier(controller), id: AnyHashable(id)): $0]

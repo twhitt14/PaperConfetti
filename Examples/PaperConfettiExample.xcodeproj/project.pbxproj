@@ -5,6 +5,18 @@
 	};
 	"objectVersion" = 56;
 	"objects" = {
+        "BAE190100000000000000003" = { "isa" = "PBXFileReference"; "path" = "Showcase/UIKitDemo.swift"; "lastKnownFileType" = "sourcecode.swift"; "sourceTree" = "<group>"; };
+        "BAE190100000000000000004" = { "isa" = "PBXBuildFile"; "fileRef" = "BAE190100000000000000003"; };
+        "BAE190100000000000000001" = {
+            "isa" = "PBXFileReference";
+            "lastKnownFileType" = "sourcecode.swift";
+            "path" = "UIKitExample.swift";
+            "sourceTree" = "<group>";
+        };
+        "BAE190100000000000000002" = {
+            "isa" = "PBXBuildFile";
+            "fileRef" = "BAE190100000000000000001";
+        };
 		"D8DB4DBA0EDA126EB56B0149" = {
 			"isa" = "PBXFileReference";
 			"lastKnownFileType" = "sourcecode.swift";
@@ -55,7 +67,7 @@
 		};
 		"EDA6D6223944636B9C5B54AA" = {
 			"isa" = "PBXGroup";
-			"children" = ("D8DB4DBA0EDA126EB56B0149", "60B113B85B8598141E10B3E2", "4DDE1B02B46FB05CF1955EC0", "1EE63A94BAD0DF0FCB0E7B8C");
+			"children" = ("BAE190100000000000000003", "BAE190100000000000000001", "D8DB4DBA0EDA126EB56B0149", "60B113B85B8598141E10B3E2", "4DDE1B02B46FB05CF1955EC0", "1EE63A94BAD0DF0FCB0E7B8C");
 			"sourceTree" = "<group>";
 		};
 		"582681C2EAE02B3F3D399C0C" = {
@@ -161,7 +173,7 @@
 		"905DB04043B7311D06A28734" = {
 			"isa" = "PBXSourcesBuildPhase";
 			"buildActionMask" = 2147483647;
-			"files" = ("8666B3F79AAE091833C0B6FB", "9582264AEA45B02C066472D5");
+			"files" = ("BAE190100000000000000004", "BAE190100000000000000002", "8666B3F79AAE091833C0B6FB", "9582264AEA45B02C066472D5");
 			"runOnlyForDeploymentPostprocessing" = 0;
 		};
 		"660B9ECA35201038EA43D198" = {

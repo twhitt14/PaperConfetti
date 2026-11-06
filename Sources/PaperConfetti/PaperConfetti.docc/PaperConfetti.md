@@ -13,6 +13,7 @@ No per-frame SwiftUI state updates or third-party runtime dependencies are neede
 import SwiftUI
 import PaperConfetti
 
+@MainActor
 struct CelebrationView: View {
     @StateObject private var confetti = ConfettiController()
 
@@ -63,11 +64,15 @@ Custom ``ConfettiShape`` paths share the built-in raster cache.
 - <doc:ButtonOrigin>
 
 ### Customizing the paper and flight
+- <doc:Configuration>
 - ``ConfettiAppearance``
 - ``ConfettiShape``
 - ``ConfettiAngle``
 - ``ConfettiEmitter``
 - ``ConfettiMotion``
+
+### Integration contract
+- <doc:Compatibility>
 
 ### UIKit integration
 - <doc:UIKitIntegration>

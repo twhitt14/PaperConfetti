@@ -1,15 +1,17 @@
 # PaperConfetti
 
-[![Swift versions](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Ftwhitt14%2FPaperConfetti%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/twhitt14/PaperConfetti)
-[![Platforms](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Ftwhitt14%2FPaperConfetti%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/twhitt14/PaperConfetti)
+[![CI](https://github.com/twhitt14/PaperConfetti/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/twhitt14/PaperConfetti/actions/workflows/ci.yml)
+![iOS 16 and later](https://img.shields.io/badge/iOS-16%2B-blue)
+![Swift tools 5.9 and later](https://img.shields.io/badge/Swift_tools-5.9%2B-orange)
 
 A dependency-free iOS 16+ confetti package for SwiftUI and UIKit. Thirteen paper
 shapes, custom silhouettes, lifelike tumble, and simple `pop()` and `drop()` methods.
 Core Animation handles flight while your interface keeps responding.
 
-**Version 0.4.0** adds custom shapes, top-down showers, source-view origins and a
-clearer shared configuration API. iOS 16 remains supported. This is a pre-1.0
-source-breaking update; see the [migration guide](Documentation/MIGRATION.md).
+**Version 1.0.0** establishes the stable public API: cannons and showers, custom
+shapes, source-view origins, flat/3D appearances, and explicit completion outcomes.
+Existing 0.4 integrations keep their method names. iOS 16 remains supported;
+see the [migration guide](Documentation/MIGRATION.md) for earlier releases.
 The device-performance measurements below retain their original version labels.
 
 <img src="Documentation/showcase.png" width="320" alt="PaperConfetti example with a colorful burst over tappable controls">
@@ -22,11 +24,17 @@ requires iOS/iPadOS 16+ and Swift tools 5.9+. It has no runtime dependencies.
 The macOS 13+ target supports core tests; there is no AppKit renderer.
 
 ```swift
-.package(url: "https://github.com/twhitt14/PaperConfetti.git", exact: "0.4.0")
+.package(url: "https://github.com/twhitt14/PaperConfetti.git", from: "1.0.0")
 ```
 
 Add `.product(name: "PaperConfetti", package: "paperconfetti")` to the target, then
-`import PaperConfetti`. The exact pin keeps pre-1.0 API updates intentional.
+`import PaperConfetti`. The `from:` requirement allows compatible 1.x releases.
+Use `exact: "1.0.0"` if your app intentionally pins every dependency update.
+
+The [1.x compatibility contract](Sources/PaperConfetti/PaperConfetti.docc/Compatibility.md)
+covers the documented public API. Internal/testing SPI, exact seeded trajectories,
+and performance on a particular device aren't version-stable promises. Report
+bugs or ask integration questions in [GitHub Issues](https://github.com/twhitt14/PaperConfetti/issues).
 
 Open `Examples/PaperConfettiExample.xcodeproj`, choose **PaperConfettiExample**,
 and run. Simulator needs no signing setup; for an iPhone, choose your own team.
@@ -174,7 +182,8 @@ container.addSubview(confetti)
 confetti.pop(configuration: .init(colors: [.cyan, .orange]))
 ```
 
-`ConfettiView` owns the same renderer and automatically handles Reduce Motion,
+`ConfettiView` supports programmatic creation and storyboard decoding. It owns
+the same renderer and automatically handles Reduce Motion,
 scene deactivation and detachment. It provides `pop`, multiple emitters, `drop`,
 `cancel`, completion callbacks and `isPlaying`. See the
 [UIKit guide](Sources/PaperConfetti/PaperConfetti.docc/UIKitIntegration.md).
@@ -187,7 +196,8 @@ same controller to multiple containers.
 ## Rendering and safety
 
 `CAEmitterLayer` owns playback: no particle SwiftUI views, per-frame app callbacks
-or per-particle timers. Adaptive trajectory samples and shared raster poses keep
+or per-particle timers. Only shape/color/pose combinations used by the current
+event are prepared; equal pieces share an image. Adaptive trajectory samples and shared raster poses keep
 the varied shapes and tilt inexpensive. A paused, pre-rolled clock prepares the
 whole event before launch, avoiding brief birth windows that could lose cannons.
 Cancellation invalidates pending starts and removes the layer tree.
@@ -195,12 +205,14 @@ Cancellation invalidates pending starts and removes the layer tree.
 Safety limits: 32 cannons, 6,000 particles, 16 colors, 32 distinct shapes, cannon
 delays up to 60s, shower emission 0–10s, nominal size 1–64pt, distances up to
 5,000pt and speed multipliers 0.25–4. Invalid flight input emits nothing. These
-bounds are not performance recommendations. The example starts at 180 pieces and
+bounds are not performance recommendations. The [configuration reference](Sources/PaperConfetti/PaperConfetti.docc/Configuration.md)
+distinguishes clamping, skipped emitters, and invalid events. The example starts at 180 pieces and
 allows 5,760 for deliberate stress testing. Physics, texture caches and renderer
 diagnostics are implementation details, available only to package benchmarks/tests.
 
-No network, analytics or stored identifiers. Attribution ships in the resource
-bundle. Physical pixel tests verified five cannons and 5,760 slots on one tested
+No network, analytics or stored identifiers. The bundled privacy manifest declares
+no tracking, collected data, or required-reason API use. It describes this package,
+not the rest of your app. Attribution ships alongside it in the resource bundle. Physical pixel tests verified five cannons and 5,760 slots on one tested
 iPhone; that is not a universal count/FPS guarantee.
 
 ## Example and validation
@@ -214,10 +226,17 @@ python3 tools/validate.py
 python3 tools/capture-example.py
 ```
 
-Validation checks core physics, strict Swift 6 compilation, the iOS package,
-example interaction, Release builds and DocC. The runner uses only the dedicated
+Validation checks core physics, strict Swift 6 compilation targeting iOS 16,
+the iOS package, example interaction, Release builds, and DocC. Public source
+symbols must have documentation comments, documentation warnings fail the build,
+and complete SwiftUI/UIKit examples compile against the public API. The runner uses only the dedicated
 **PaperConfetti Example** simulator and ignored `.artifacts/` output. Simulator
 checks establish behavior and compatibility, not physical frame-rate performance.
+
+For API reference and complete integration guides, open the package in Xcode and
+choose **Product → Build Documentation**. The [DocC catalog](Sources/PaperConfetti/PaperConfetti.docc/PaperConfetti.md)
+is also readable in this repository. Swift Package Index builds are configured;
+its indexing status is independent of Git tag availability.
 
 See [validation](VALIDATION.md), [contributing](CONTRIBUTING.md), the
 [release workflow](PUBLISHING.md), and [GitHub CI](https://github.com/twhitt14/PaperConfetti/actions/workflows/ci.yml).

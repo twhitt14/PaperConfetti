@@ -112,7 +112,11 @@ extension ConfettiShape {
 import SwiftUI
 extension ConfettiShape: Shape {
     /// Draw the same silhouette as the particle, fitted without distortion.
+    /// - Parameter rect: The preview bounds. Empty or non-finite bounds produce an empty path.
+    /// - Returns: The centered silhouette preserving its proportions. Use even-odd fill for custom holes.
     public func path(in rect: CGRect) -> Path {
+        guard !rect.isEmpty, !rect.isInfinite, !rect.isNull,
+              [rect.minX, rect.minY, rect.width, rect.height].allSatisfy(\.isFinite) else { return Path() }
         let scale = min(rect.width / CGFloat(relativeWidth), rect.height / CGFloat(relativeHeight))
         let width = scale * CGFloat(relativeWidth), height = scale * CGFloat(relativeHeight)
         var transform = CGAffineTransform(translationX: rect.midX - width / 2, y: rect.midY - height / 2)

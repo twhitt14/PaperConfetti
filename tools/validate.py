@@ -36,14 +36,23 @@ def compile_examples(output):
              '-o', str(compiled / 'libPaperConfetti.dylib'),
              *map(str, sorted((ROOT / 'Sources/PaperConfetti').glob('*.swift')))],
             compiled / 'library.log')
-    guide = (ROOT / 'Sources/PaperConfetti/PaperConfetti.docc/ButtonOrigin.md').read_text()
-    example = (ROOT / 'Examples/ButtonOrigin.swift').read_text()
-    snippets = re.findall(r'```swift\n(.*?)```', guide, re.S)
-    if not snippets or snippets[0].strip() != example.strip():
-        raise SystemExit('The button-origin DocC example must match Examples/ButtonOrigin.swift.')
-    for name in ['QuickStart', 'ButtonOrigin']:
+    for guide_name, example_name in [('ButtonOrigin', 'ButtonOrigin'), ('UIKitIntegration', 'UIKitExample')]:
+        guide = (ROOT / 'Sources/PaperConfetti/PaperConfetti.docc' / (guide_name + '.md')).read_text()
+        example = (ROOT / 'Examples' / (example_name + '.swift')).read_text()
+        snippets = re.findall(r'```swift\n(.*?)```', guide, re.S)
+        if not snippets or snippets[0].strip() != example.strip():
+            raise SystemExit(f'The {guide_name} DocC example must match Examples/{example_name}.swift.')
+    for name in ['QuickStart', 'ButtonOrigin', 'UIKitExample', 'PublicAPIExamples']:
         command([*common, '-c', '-I', str(compiled), str(ROOT / 'Examples' / (name + '.swift')),
                  '-o', str(compiled / (name + '.o'))], compiled / (name + '.log'))
+    graphs = compiled / 'symbols'
+    graphs.mkdir()
+    command(['xcrun', 'swift-symbolgraph-extract', '-module-name', 'PaperConfetti',
+             '-I', str(compiled), '-sdk', sdk, '-target', architecture + '-apple-ios16.0-simulator',
+             '-minimum-access-level', 'public', '-skip-synthesized-members', '-output-dir', str(graphs)],
+            compiled / 'symbols.log')
+    command(['python3', 'tools/check_docs.py', str(graphs), '--output', str(output / 'public-documentation.json')],
+            output / 'public-documentation.log')
     return True
 
 def simulator():
@@ -101,11 +110,21 @@ def main():
              '-resultBundlePath', str(output / 'PackageTests.xcresult'), 'test'], output / 'package-ios.log')
     command(['xcodebuild', '-project', 'Examples/PaperConfettiExample.xcodeproj', '-scheme', 'PaperConfettiExample',
              *common, '-resultBundlePath', str(output / 'ExampleTests.xcresult'), 'test'], output / 'example-ios.log')
+    # A fresh distribution build also proves new resources are embedded in the app,
+    # rather than accepting an old copied SwiftPM bundle from an incremental build.
+    release_derived = output / 'ReleaseDerivedData'
     command(['xcodebuild', '-project', 'Examples/PaperConfettiExample.xcodeproj', '-scheme', 'PaperConfettiExample',
              '-configuration', 'Release', '-destination', 'generic/platform=iOS Simulator',
-             '-derivedDataPath', str(derived), 'build'], output / 'example-release.log')
+             '-derivedDataPath', str(release_derived), 'build'], output / 'example-release.log')
+    app = release_derived / 'Build/Products/Release-iphonesimulator/PaperConfettiExample.app'
+    for name in ['ThirdPartyNotices.txt', 'PrivacyInfo.xcprivacy']:
+        source = ROOT / 'Sources/PaperConfetti/Resources' / name
+        copies = [p for p in app.rglob(name) if 'PaperConfetti_PaperConfetti.bundle' in p.parts]
+        if not copies or any(p.read_bytes() != source.read_bytes() for p in copies):
+            raise SystemExit(f'The Release app is missing the current package resource: {name}')
     command(['xcodebuild', '-scheme', 'PaperConfetti', '-destination', 'generic/platform=iOS Simulator',
-             '-derivedDataPath', str(derived), 'docbuild'], output / 'documentation.log')
+             '-derivedDataPath', str(derived), 'OTHER_DOCC_FLAGS=--warnings-as-errors',
+             'docbuild'], output / 'documentation.log')
     receipt = {'completedAt': datetime.datetime.now(datetime.timezone.utc).isoformat(), 'simulator': device,
                'xcode': subprocess.check_output(['xcodebuild', '-version'], text=True).strip(),
                'swift': subprocess.check_output(['swift', '--version'], text=True).strip(),

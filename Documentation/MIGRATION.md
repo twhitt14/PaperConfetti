@@ -1,4 +1,18 @@
-# Migrating from 0.3 to 0.4
+# Migrating to 1.0
+
+## From 0.4
+
+The public method names and parameter labels are unchanged. `ConfettiConfiguration`
+now conforms to `Sendable`; controllers and UI hosts remain main-actor isolated.
+UIKit hosts can be loaded from storyboards. Colors retain color-space/pattern
+identity, and source anchors follow a replacement controller even when the view
+hasn't moved. These are corrections to existing behavior.
+
+Change the dependency requirement to `from: "1.0.0"` to accept compatible 1.x
+updates, or use an exact pin. Testing SPI and exact random trajectories are not
+part of the [stable contract](../Sources/PaperConfetti/PaperConfetti.docc/Compatibility.md).
+
+## From 0.3 and earlier
 
 Version 0.4 intentionally refines the public API before 1.0.
 iOS 16 and `@StateObject` remain supported. Plain `confetti.pop()` and

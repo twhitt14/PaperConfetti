@@ -6,7 +6,10 @@ let package = Package(
     platforms: [.iOS(.v16), .macOS(.v13)],
     products: [.library(name: "PaperConfetti", targets: ["PaperConfetti"])],
     targets: [
-        .target(name: "PaperConfetti", resources: [.copy("Resources/ThirdPartyNotices.txt")]),
+        .target(name: "PaperConfetti", resources: [
+            .copy("Resources/ThirdPartyNotices.txt"),
+            .process("Resources/PrivacyInfo.xcprivacy")
+        ]),
         .testTarget(name: "PaperConfettiTests", dependencies: ["PaperConfetti"])
     ]
 )

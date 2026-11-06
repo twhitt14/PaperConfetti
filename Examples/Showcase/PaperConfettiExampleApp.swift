@@ -3,6 +3,12 @@ import SwiftUI
 @main
 struct PaperConfettiExampleApp: App {
     var body: some Scene {
-        WindowGroup { ShowcaseView().preferredColorScheme(.dark) }
+        WindowGroup {
+            if ProcessInfo.processInfo.arguments.contains("--ui-testing-uikit") {
+                UIKitDemo()
+            } else {
+                ShowcaseView().preferredColorScheme(.dark)
+            }
+        }
     }
 }

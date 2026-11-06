@@ -38,3 +38,13 @@ credentials or an app signing team.
 CI uses pinned GitHub Actions, read-only permissions and two Xcode versions. It
 runs checks only; it never publishes tags or releases. Update the runner matrix
 when GitHub retires an image/toolchain, with a documented validation result.
+
+## Stable API and documentation
+
+Keep the documented 1.x API source compatible and preserve iOS 16. See the
+[compatibility contract](Sources/PaperConfetti/PaperConfetti.docc/Compatibility.md).
+Document public symbols, parameters, units, limits, and outcomes in DocC comments.
+The validation command rejects undocumented source symbols and DocC warnings,
+and compiles the complete guides as strict Swift 6 examples. Retain the privacy
+manifest and attribution in the package resource bundle; update declarations if
+actual runtime behavior changes.

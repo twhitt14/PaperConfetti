@@ -11,6 +11,7 @@ public struct ConfettiShape: Hashable, Sendable, CaseIterable {
     let cacheKey: String
     let relativeWidth: Double
     let relativeHeight: Double
+    /// A human-readable label; names do not participate in geometry identity.
     public let name: String
 
     enum Command: Hashable, Sendable {
@@ -19,13 +20,25 @@ public struct ConfettiShape: Hashable, Sendable, CaseIterable {
         case curve(Double, Double, Double, Double, Double, Double)
         case close
     }
+    /// A reason a custom silhouette cannot be normalized safely.
     public enum PathError: Error, Equatable {
-        case empty, nonFinite, tooComplex, invalidSize
+        /// The path contains no drawing elements.
+        case empty
+        /// A bound or path coordinate is not finite, or cannot be normalized.
+        case nonFinite
+        /// The path contains more than 512 elements.
+        case tooComplex
+        /// The path has zero area bounds or an aspect ratio thinner than 1:64.
+        case invalidSize
     }
 
     /// Makes a filled silhouette from a Core Graphics path, preserving its proportions.
     /// Holes use the even-odd fill rule. At most 512 path elements are accepted.
     /// `name` is a display label, not a cache key; different geometry cannot collide.
+    /// - Parameters:
+    ///   - path: The silhouette to snapshot. Stroke open lines into a filled path first.
+    ///   - name: A display label. Defaults to “Custom”.
+    /// - Throws: ``PathError`` for empty, non-finite, excessive, or degenerate geometry.
     public init(path: CGPath, name: String = "Custom") throws {
         guard !path.isEmpty else { throw PathError.empty }
         let bounds = path.boundingBoxOfPath
@@ -92,28 +105,57 @@ public struct ConfettiShape: Hashable, Sendable, CaseIterable {
         }
     }
 
+    /// Returns whether two shapes share a built-in or normalized custom-path identity.
+    ///
+    /// - Parameters:
+    ///   - lhs: The first shape.
+    ///   - rhs: The second shape.
+    /// - Returns: `true` for the same built-in or custom path representation and
+    ///   proportions, regardless of display name. Different path commands are
+    ///   not canonicalized merely because they produce the same silhouette.
     public static func == (lhs: Self, rhs: Self) -> Bool { lhs.cacheKey == rhs.cacheKey }
+    /// Hashes the geometry identity, excluding the display name.
+    ///
+    /// - Parameter hasher: The hasher to receive the identity.
     public func hash(into hasher: inout Hasher) { hasher.combine(cacheKey) }
+    /// A filled circle.
     public static let circle = Self(.circle, name: "Circle")
+    /// A compact filled triangle.
     public static let triangle = Self(.triangle, name: "Triangle")
+    /// A narrow rectangular strip.
     public static let strip = Self(.strip, name: "Strip")
+    /// A filled five-pointed star.
     public static let star = Self(.star, name: "Star")
+    /// A hollow five-pointed star.
     public static let outlinedStar = Self(.outlinedStar, name: "Outlined star")
+    /// A four-pointed curved sparkle.
     public static let sparkle = Self(.sparkle, name: "Sparkle")
+    /// A thin six-spoke star.
     public static let asterisk = Self(.asterisk, name: "Asterisk")
+    /// A gently curved streamer.
     public static let wave = Self(.wave, name: "Wave")
+    /// A wavy, curved streamer.
     public static let squiggle = Self(.squiggle, name: "Squiggle")
+    /// A single looping streamer.
     public static let loop = Self(.loop, name: "Loop")
+    /// A double-loop streamer.
     public static let doubleLoop = Self(.doubleLoop, name: "Double loop")
+    /// A hollow circle.
     public static let ring = Self(.ring, name: "Ring")
+    /// A long triangular paper cut.
     public static let longTriangle = Self(.longTriangle, name: "Long triangle")
+    /// A curved triangular paper cut.
     public static let curvedTriangle = Self(.curvedTriangle, name: "Curved triangle")
+    /// A diamond-shaped paper cut.
     public static let diamond = Self(.diamond, name: "Diamond")
+    /// A slanted paper cut.
     public static let parallelogram = Self(.parallelogram, name: "Parallelogram")
     /// The built-in library. Custom shapes are values and are not added to this list.
     public static let allCases: [Self] = [.circle, .triangle, .strip, .star, .outlinedStar, .sparkle, .asterisk, .wave, .squiggle, .loop, .doubleLoop, .ring, .longTriangle, .curvedTriangle, .diamond, .parallelogram]
+    /// The default 13-shape mix: four stars, four streamers, a ring, and four paper cuts.
     public static let festive: [Self] = [.star, .outlinedStar, .sparkle, .asterisk,
         .wave, .squiggle, .loop, .doubleLoop, .ring, .longTriangle, .curvedTriangle, .diamond, .parallelogram]
+    /// A restrained three-shape mix of circles, triangles, and strips.
     public static let classic: [Self] = [.circle, .triangle, .strip]
 
     @_spi(Testing) public var rawValue: Int { builtin?.rawValue ?? -1 }

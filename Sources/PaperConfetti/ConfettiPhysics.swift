@@ -2,27 +2,50 @@ import Foundation
 
 /// An explicit angle. Zero points right and 90 degrees points up in overlay coordinates.
 public struct ConfettiAngle: Equatable, Sendable {
+    /// The angle in degrees; finite values are normalized when emitting particles.
     public var degrees: Double
-    public var radians: Double { degrees * .pi / 180 }
+    /// The equivalent angle in radians.
+    public var radians: Double { degrees / 180 * .pi }
+    /// Creates an angle measured in degrees.
+    ///
+    /// - Parameter value: The number of degrees.
+    /// - Returns: The corresponding angle.
     public static func degrees(_ value: Double) -> Self { Self(degrees: value) }
-    public static func radians(_ value: Double) -> Self { Self(degrees: value * 180 / .pi) }
+    /// Creates an angle measured in radians.
+    ///
+    /// - Parameter value: The number of radians.
+    /// - Returns: The corresponding angle.
+    public static func radians(_ value: Double) -> Self { Self(degrees: value / .pi * 180) }
 }
 
 /// Captured emission coordinates. Moving the source view never moves flying paper.
 public struct ConfettiEmitter: Equatable, Sendable {
     @_spi(Testing) public var x: Double
     @_spi(Testing) public var y: Double
+    /// The emission delay in seconds, clamped to 0–60. Non-finite values skip this emitter.
     public var delay: Double
     @_spi(Testing) public var count: Int
     @_spi(Testing) public var angle: Double
     private var spreadDegrees: Double
+    /// The finite emission point in overlay coordinates, captured for this event.
     public var origin: CGPoint {
         get { CGPoint(x: x, y: y) }
         set { x = newValue.x; y = newValue.y }
     }
+    /// The requested count; negative counts act as zero. The event shares a 6,000-piece budget.
     public var particleCount: Int { get { count } set { count = newValue } }
+    /// The direction, normalized to a full rotation; zero points right and 90 degrees points up.
     public var emissionAngle: ConfettiAngle { get { .degrees(angle) } set { angle = newValue.degrees } }
+    /// The full fan width, using the absolute value clamped to 360 degrees.
     public var spread: ConfettiAngle { get { .degrees(spreadDegrees) } set { spreadDegrees = newValue.degrees } }
+    /// Creates a cannon with captured coordinates and independent timing.
+    ///
+    /// - Parameters:
+    ///   - origin: The emission point in overlay-local points.
+    ///   - delay: Seconds before this cannon's visible flight. Defaults to zero.
+    ///   - particleCount: The requested count. Defaults to 80.
+    ///   - emissionAngle: The direction. Defaults to 90 degrees, pointing up.
+    ///   - spread: The full fan width. Defaults to 70 degrees.
     public init(origin: CGPoint, delay: TimeInterval = 0, particleCount: Int = 80,
                 emissionAngle: ConfettiAngle = .degrees(90), spread: ConfettiAngle = .degrees(70)) {
         self.init(x: origin.x, y: origin.y, delay: delay, count: particleCount,
@@ -43,21 +66,44 @@ public struct ConfettiEmitter: Equatable, Sendable {
 
 /// Paper orientation. Both appearances use the native particle renderer.
 public enum ConfettiAppearance: String, CaseIterable, Sendable {
+    /// Paper spins in the screen plane without depth tilt.
     case flat
+    /// Paper spins and tumbles in depth using the same flight paths as flat paper.
     case threeDimensional
 }
 
 /// Advanced paper motion. Ordinary callers can keep the lifelike defaults.
 public struct ConfettiMotion: Equatable, Sendable {
-    /// Multiplies ascent velocity while preserving reach and descent timing.
+    /// Multiplies ascent velocity while preserving reach and descent timing, within 0.25–4.
     public var launchSpeedMultiplier: Double
+    /// The ascent duration range in seconds before the speed multiplier, within 0.05–4.
+    ///
+    /// `nil` derives the range from launch distance. Showers have no ascent.
     public var launchDuration: ClosedRange<Double>?
+    /// The screen-plane spin magnitude in radians per second, within 0–100. Direction is randomized.
     public var spin: ClosedRange<Double>
+    /// The depth-tumble magnitude in radians per second, within 0–100. Flat appearance ignores it.
     public var tumble: ClosedRange<Double>
+    /// The per-particle size multipliers, within 0.1–3.
     public var sizeVariation: ClosedRange<Double>
+    /// The horizontal flutter amplitude in points, from zero through 100.
     public var flutter: Double
     /// Fraction of the descent before fading begins (0...0.95).
     public var fadeOutStart: Double
+    /// Creates advanced motion settings.
+    ///
+    /// All values and range bounds must be finite and within their documented limits.
+    /// An invalid setting emits nothing. Showers ignore ascent settings but still
+    /// validate the complete configuration.
+    ///
+    /// - Parameters:
+    ///   - launchDuration: Optional ascent duration range before applying the speed multiplier.
+    ///   - launchSpeedMultiplier: Ascent speed multiplier, within 0.25–4. Defaults to 1.
+    ///   - spin: Screen-plane rotation magnitudes. Defaults to 2.8–7.8 radians per second.
+    ///   - tumble: Depth rotation magnitudes. Defaults to 3–10 radians per second.
+    ///   - sizeVariation: Size multipliers. Defaults to 0.8–1.2.
+    ///   - flutter: Horizontal flutter in points. Defaults to 5.
+    ///   - fadeOutStart: Fraction of descent before fading begins. Defaults to 0.4.
     public init(
         launchDuration: ClosedRange<Double>? = nil, launchSpeedMultiplier: Double = 1,
         spin: ClosedRange<Double> = 2.8...7.8,
@@ -126,7 +172,12 @@ public struct ConfettiMotion: Equatable, Sendable {
             fallSpeedRange.lowerBound >= 0.25, fallSpeedRange.upperBound <= 4
         else { return [] }
         var seen = Set<ConfettiShape>()
-        let shapes = Array(shapes.filter { seen.insert($0).inserted }.prefix(32))
+        var selectedShapes: [ConfettiShape] = []
+        for shape in shapes where seen.insert(shape).inserted {
+            selectedShapes.append(shape)
+            if selectedShapes.count == 32 { break }
+        }
+        let shapes = selectedShapes
         guard !shapes.isEmpty else { return [] }
         let paletteCount = min(paletteCount, 16)
         // Separate stream: changes to cannon counts/positions do not reroll shape speeds.

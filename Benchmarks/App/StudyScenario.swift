@@ -46,9 +46,10 @@ struct StudyScenario: Decodable, Identifiable {
     }
     var shapeSet: [ConfettiShape] {
         if ProcessInfo.processInfo.arguments.contains("--emission-probe") { return [.circle] }
-        if shapes == "festive" { return ConfettiShape.festive }
-        if shapes == "classic" { return ConfettiShape.classic }
-        return ConfettiShape.allCases.filter { String(describing: $0) == shapes }
+        guard let palette = StudyShapes.resolve(shapes) else {
+            preconditionFailure("Unknown study shape: \(shapes)")
+        }
+        return palette
     }
     func burst(size canvas: CGSize, seed: UInt64) -> ConfettiBurst {
         var burst = ConfettiBurst(cannons: (0..<5).map {

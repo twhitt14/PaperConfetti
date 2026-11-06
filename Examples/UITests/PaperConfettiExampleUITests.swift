@@ -1,6 +1,30 @@
 import XCTest
 
 final class PaperConfettiExampleUITests: XCTestCase {
+    func testPublicUIKitHostPlaysPassesInputAndCancelsOnBackground() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing-uikit"]
+        app.launch()
+        XCTAssertTrue(app.buttons["Pop"].waitForExistence(timeout: 10))
+        app.buttons["Pop"].tap()
+        app.buttons["Tap through"].tap()
+        XCTAssertEqual(app.staticTexts["uikit-status"].label, "Tap 1 · playing")
+        app.buttons["Stop"].tap()
+        let cancelled = NSPredicate(format: "label == %@", "cancelled")
+        expectation(for: cancelled, evaluatedWith: app.staticTexts["uikit-status"])
+        waitForExpectations(timeout: 3)
+        app.buttons["Shower"].tap()
+        app.buttons["Tap through"].tap()
+        XCTAssertEqual(app.staticTexts["uikit-status"].label, "Tap 2 · playing")
+        XCUIDevice.shared.press(.home)
+        app.activate()
+        app.buttons["Tap through"].tap()
+        XCTAssertEqual(app.staticTexts["uikit-status"].label, "Tap 3 · idle")
+        app.buttons["Pop"].tap()
+        app.buttons["Tap through"].tap()
+        XCTAssertEqual(app.staticTexts["uikit-status"].label, "Tap 4 · playing")
+    }
+
     func testTouchesScrollNavigationAndCancellationDuringFlight() {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing"]

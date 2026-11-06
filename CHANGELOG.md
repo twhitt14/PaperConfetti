@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.0 — 2026-11-06
+
+- Establish the stable public API and 1.x compatibility contract while retaining iOS 16 and the 0.4 method names. Configurations are now Sendable values.
+- Fix color-space and pattern-color collisions in both image caches. Prepare only shape/color/pose combinations used by an event, sharing repeated images.
+- Fix source anchors when SwiftUI replaces a controller without changing geometry, and support UIKit storyboard/archive decoding without restoring old flights.
+- Harden extreme finite angle conversion and invalid shape-preview bounds. Stop shape selection after the first 32 distinct values.
+- Document every authored public symbol, parameter limits, lifecycle outcomes, ownership, and privacy. Compile complete SwiftUI/UIKit examples and fail validation for missing public documentation or DocC warnings.
+- Bundle explicit privacy declarations alongside the existing attribution. Add regression coverage for resources, palettes, custom holes, source movement/replacement/removal, deferred layout, UIKit foreground/background behavior, and input pass-through.
+- Repair individual-shape profiling scenarios after the 0.4 value-type migration and validate all 16 named shapes. Existing physical-performance results retain their measured release labels; this release makes no new device-performance claim.
+
 ## 0.4.0 — 2026-11-05
 
 - Modernize configuration labels and typed angles; share configuration across single and multiple cannons.

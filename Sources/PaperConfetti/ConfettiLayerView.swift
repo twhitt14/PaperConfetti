@@ -11,7 +11,7 @@ import UIKit
     private var completion: ConfettiCompletion?
     private var generation = 0
     private var gate: ConfettiLaunchGate?
-    // Exactly representable reciprocal; longer than every bounded burst (under 305s).
+    // Exactly representable reciprocal; longer than every supported flight and cleanup.
     // Start one emission period into local time instead of closing a tiny birth window.
     static let emissionPeriod: TimeInterval = 1_024
     /// Requested active population, not a readback of Core Animation's live particles.
@@ -25,7 +25,11 @@ import UIKit
         isUserInteractionEnabled = false; backgroundColor = .clear; isOpaque = false
         accessibilityElementsHidden = true
     }
-    required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        isUserInteractionEnabled = false; backgroundColor = .clear; isOpaque = false
+        accessibilityElementsHidden = true
+    }
 
     public func show(burst: ConfettiBurst, colors: [UIColor], enabled: Bool = true) {
         guard burst != lastBurst else { if !enabled { cancel() }; return }
@@ -48,13 +52,12 @@ import UIKit
         guard !particles.isEmpty else { complete(.notPresented); return }
         let colors = colors.prefix(16).map { $0.resolvedColor(with: traitCollection) }
         let scale = max(1, window?.screen.scale ?? traitCollection.displayScale)
-        let shapes = Array(Set(particles.map(\.shape))).sorted { $0.cacheKey < $1.cacheKey }
-        let textures = ConfettiNativeTextures.make(colors: colors, size: burst.size, scale: scale, shapes: shapes)
+        let textures = ConfettiNativeTextures.make(particles: particles, colors: colors, size: burst.size, scale: scale)
         let clock = CALayer(); clock.name = "PaperConfetti.Clock"
         clock.speed = 0; clock.timeOffset = Self.emissionPeriod
         let token = generation
         CATransaction.begin(); CATransaction.setDisableActions(true)
-        for p in particles {
+        for (p, texture) in zip(particles, textures) {
             let emitter = CAEmitterLayer()
             emitter.emitterPosition = .zero; emitter.emitterShape = .rectangle
             emitter.emitterSize = CGSize(width: 12, height: 8)
@@ -64,9 +67,7 @@ import UIKit
             // All cells share a clock. Cannon delays apply to visible flight only.
             emitter.beginTime = 0.000001
             let cell = CAEmitterCell()
-            let shape = shapes.firstIndex(of: p.shape)!
-            let pose = Int(p.phase / (2 * .pi) * 8) % 8
-            cell.contents = textures[(p.color * shapes.count + shape) * 8 + pose]
+            cell.contents = texture
             cell.contentsScale = scale
             // Leave emission enabled: a short cell.duration can expire before the
             // render server first visits a large layer tree. The pre-rolled clock
