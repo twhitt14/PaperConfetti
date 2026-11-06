@@ -3,7 +3,7 @@ import UIKit
 
 /// Native-particle renderer for UIKit and the SwiftUI overlays. A pop replaces the
 /// previous burst. Particle positions stay in the view's captured local coordinates.
-@MainActor public final class ConfettiLayerView: UIView {
+@_spi(Testing) @MainActor public final class ConfettiLayerView: UIView {
     private(set) var hasEnteredWindow = false
     var layoutReady: (() -> Void)?
     private var lastBurst: ConfettiBurst?
@@ -48,7 +48,7 @@ import UIKit
         guard !particles.isEmpty else { complete(.notPresented); return }
         let colors = colors.prefix(16).map { $0.resolvedColor(with: traitCollection) }
         let scale = max(1, window?.screen.scale ?? traitCollection.displayScale)
-        let shapes = Array(Set(particles.map(\.shape))).sorted { $0.rawValue < $1.rawValue }
+        let shapes = Array(Set(particles.map(\.shape))).sorted { $0.cacheKey < $1.cacheKey }
         let textures = ConfettiNativeTextures.make(colors: colors, size: burst.size, scale: scale, shapes: shapes)
         let clock = CALayer(); clock.name = "PaperConfetti.Clock"
         clock.speed = 0; clock.timeOffset = Self.emissionPeriod

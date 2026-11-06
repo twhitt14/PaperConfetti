@@ -1,5 +1,5 @@
 import Foundation
-import PaperConfetti
+@_spi(Testing) import PaperConfetti
 
 /// Benchmark flight plan. One piece per plan by default; optional diagnostic
 /// grouping lets a few visually different pieces share a nearby flight.

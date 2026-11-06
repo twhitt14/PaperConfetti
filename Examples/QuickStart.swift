@@ -15,7 +15,7 @@ struct ConfettiQuickStart: View {
                     confetti.pop(configuration: .init(
                         colors: [.mint, .pink, .orange],
                         shapes: [.star, .ring, .doubleLoop, .curvedTriangle],
-                        count: 100, size: 12, spread: 100))
+                        particleCount: 100, particleSize: 12, spread: .degrees(100)))
                 }
             }
             .buttonStyle(.borderedProminent)

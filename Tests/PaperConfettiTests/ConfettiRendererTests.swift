@@ -2,10 +2,38 @@
     import XCTest
     import SwiftUI
     import UIKit
-    @testable import PaperConfetti
+    @_spi(Testing) @testable import PaperConfetti
 
     @MainActor
     final class ConfettiRendererTests: XCTestCase {
+        func testTinyCustomTexturesRemainRenderableAndGeometryCannotAlias() throws {
+            let thin = try ConfettiShape(path: CGPath(rect: CGRect(x: 0, y: 0, width: 64, height: 1), transform: nil), name: "Custom")
+            let round = try ConfettiShape(path: CGPath(ellipseIn: CGRect(x: 0, y: 0, width: 1, height: 1), transform: nil), name: "Custom")
+            for scale in [1.0, 2, 3] {
+                let textures = ConfettiTextures.make(colors: [.red], size: 1, scale: scale, shapes: [thin, round])
+                XCTAssertEqual(textures.count, 2)
+                XCTAssertTrue(textures.allSatisfy { $0.width > 0 && $0.height > 0 })
+                XCTAssertFalse(textures[0] === textures[1], "Display names cannot alias different geometry")
+            }
+        }
+
+        func testPublicUIKitHostCancelsPendingWorkAndNeverConsumesInput() async throws {
+            let overlay = ConfettiView(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+            var outcomes: [ConfettiOutcome] = []
+            overlay.drop { outcomes.append($0) }
+            overlay.cancel()
+            for _ in 0..<100 where outcomes.isEmpty { try await Task.sleep(nanoseconds: 10_000_000) }
+            XCTAssertEqual(outcomes, [.cancelled])
+            XCTAssertFalse(overlay.isPlaying)
+            overlay.isUserInteractionEnabled = true
+            XCTAssertNil(overlay.hitTest(CGPoint(x: 20, y: 20), with: nil))
+            XCTAssertTrue(overlay.accessibilityElementsHidden)
+            NotificationCenter.default.post(name: UIApplication.willResignActiveNotification, object: nil)
+            overlay.pop { outcomes.append($0) }
+            for _ in 0..<100 where outcomes.count < 2 { try await Task.sleep(nanoseconds: 10_000_000) }
+            XCTAssertEqual(outcomes, [.cancelled, .notPresented])
+        }
+
         func testActiveUIKitOverlayPassesHitTestsThroughToTheButton() throws {
             let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
             let host = UIViewController()

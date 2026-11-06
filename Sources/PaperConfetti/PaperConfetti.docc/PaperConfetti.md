@@ -39,7 +39,7 @@ or `.notPresented` as a successful animation. The same callback form is availabl
 for configured single-cannon and explicit multi-cannon requests.
 
 Callbacks run once per resolved request, asynchronously on the main actor after
-cleanup. The Bool return value continues to mean request acceptance. A request
+cleanup. Event methods return `Void`; the outcome is the result. A request
 queued before the first mount waits for attachment/layout, replacement or
 cancellation. Keep the controller owned by the screen, and cancel a pending
 request if you abandon that presentation. Avoid strong owner/callback cycles.
@@ -49,8 +49,9 @@ cannon delays and a quarter-second cleanup margin. It does not inspect the last
 visible Core Animation particle. An already resolved outcome is not changed by
 a later cancellation; the caller still decides whether its follow-up is current.
 
-Completion callbacks are available in 0.3.0. The UIKit renderer and value-driven
-``ConfettiOverlay`` retain their existing APIs.
+Use ``ConfettiView`` for UIKit with automatic scene and Reduce Motion policy.
+Use `drop()` for a full-width shower; it has the same outcome contract.
+Custom ``ConfettiShape`` paths share the built-in raster cache.
 
 ## Topics
 
@@ -58,19 +59,16 @@ Completion callbacks are available in 0.3.0. The UIKit renderer and value-driven
 - ``ConfettiController``
 - ``ConfettiOutcome``
 - ``ConfettiConfiguration``
-- ``ConfettiOverlay``
+- ``ConfettiPlaybackState``
 - <doc:ButtonOrigin>
 
 ### Customizing the paper and flight
 - ``ConfettiAppearance``
 - ``ConfettiShape``
-- ``ConfettiBurst``
+- ``ConfettiAngle``
 - ``ConfettiEmitter``
 - ``ConfettiMotion``
 
 ### UIKit integration
 - <doc:UIKitIntegration>
-- ``ConfettiLayerView``
-
-### Deterministic physics
-- ``ConfettiParticle``
+- ``ConfettiView``

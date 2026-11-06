@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Modernize configuration labels and typed angles; share configuration across single and multiple cannons.
+- Add launch-speed multiplier, observable lifecycle state, relative/source origins and a public UIKit host. Event calls return Void; outcomes report completion.
+- Add full-width `drop()` showers and bounded, cached custom paths, keeping iOS 16 support.
+- Move raw physics/texture/renderer diagnostics behind testing SPI. See the migration guide for pre-1.0 source changes.
+- Extend examples and lifecycle, geometry, fading and touch-through regression coverage. Existing device measurements remain explicitly version-labeled.
+
 ## 0.3.0 — 2026-11-04
 
 - Make comparison-app coordinate conversions explicit for Xcode 16.4; the new

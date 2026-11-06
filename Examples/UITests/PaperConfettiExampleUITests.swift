@@ -12,12 +12,8 @@ final class PaperConfettiExampleUITests: XCTestCase {
         app.switches["toggle-through"].tap()
         XCTAssertEqual(app.staticTexts["input-proof"].label, "Tap received while confetti is active")
         app.buttons["cannons"].tap()
-        app.scrollViews["showcase-scroll"].swipeUp()
-        app.scrollViews["showcase-scroll"].swipeUp()
-        XCTAssertTrue(
-            app.buttons["shape-15"].isHittable, "Scroll must reach the last shape through the overlay")
-        app.scrollViews["showcase-scroll"].swipeDown()
-        app.scrollViews["showcase-scroll"].swipeDown()
+        scrollIntoView(app.buttons["shape-15"], in: app)
+        scrollIntoView(app.buttons["tap-through"], in: app)
         app.buttons["stop"].tap()
         app.buttons["tap-through"].tap()
         XCTAssertEqual(app.staticTexts["input-proof"].label, "Tap received · overlay is idle")
@@ -58,6 +54,23 @@ final class PaperConfettiExampleUITests: XCTestCase {
         scrollIntoView(app.buttons["tap-through"], in: app); app.buttons["tap-through"].tap()
         XCTAssertEqual(app.staticTexts["input-proof"].label, "Tap received · overlay is idle")
     }
+    func testSourceCustomShapesAndTopShowerRemainInteractive() {
+        let app = XCUIApplication(); app.launchArguments = ["--ui-testing"]; app.launch()
+        scrollIntoView(app.buttons["custom-hearts"], in: app)
+        app.buttons["custom-hearts"].tap()
+        let playing = NSPredicate(format: "label == %@", "Playback: playing")
+        expectation(for: playing, evaluatedWith: app.staticTexts["playback-state"])
+        waitForExpectations(timeout: 3)
+        app.buttons["tap-through"].tap()
+        XCTAssertEqual(app.staticTexts["input-proof"].label, "Tap received while confetti is active")
+        app.buttons["drop"].tap()
+        app.switches["toggle-through"].tap()
+        XCTAssertEqual(app.staticTexts["input-proof"].label, "Tap received while confetti is active")
+        app.buttons["stop"].tap()
+        expectation(for: NSPredicate(format: "label == %@", "Playback: idle"), evaluatedWith: app.staticTexts["playback-state"])
+        waitForExpectations(timeout: 3)
+    }
+
     // A full swipe can leave a short control behind the translucent navigation bar.
     // Keep the actual control wholly inside the unobscured part of the scroll view.
     private func scrollIntoView(_ element: XCUIElement, in app: XCUIApplication) {

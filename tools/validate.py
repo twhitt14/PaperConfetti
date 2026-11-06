@@ -52,8 +52,14 @@ def simulator():
     # that happens to be installed on the host.
     sdk = subprocess.check_output(['xcrun', '--sdk', 'iphonesimulator', '--show-sdk-version'], text=True).strip()
     maximum = tuple(map(int, sdk.split('.')))
+    # Device-specific runtimes can share the same version as ordinary iOS.
+    # Pixel probes assume one full-width phone display, so never select a
+    # dual-display runtime merely because it appears first in simctl's list.
+    phone_type = 'com.apple.CoreSimulator.SimDeviceType.iPhone-16'
     runtimes = [r for r in data['runtimes'] if r.get('isAvailable') and r['name'].startswith('iOS ')
-                and tuple(map(int, r['version'].split('.'))) <= maximum]
+                and tuple(map(int, r['version'].split('.'))) <= maximum
+                and (not r.get('supportedDeviceTypes') or any(
+                    d['identifier'] == phone_type for d in r['supportedDeviceTypes']))]
     if not runtimes:
         raise SystemExit('Install an iOS simulator runtime compatible with the selected Xcode.')
     runtime = max(runtimes, key=lambda r: tuple(map(int, r['version'].split('.'))))
@@ -61,14 +67,8 @@ def simulator():
     existing = [d for d in data['devices'].get(runtime['identifier'], []) if d['name'] == name and d.get('isAvailable')]
     if existing:
         return existing[0]['udid']
-    # Prefer an installed standard iPhone type already compatible with this runtime.
-    phones = [d for d in data['devices'].get(runtime['identifier'], [])
-              if d.get('isAvailable') and 'iPhone' in d['name'] and d.get('deviceTypeIdentifier')]
-    if phones:
-        device_type = phones[0]['deviceTypeIdentifier']
-    else:
-        # iPhone 16 is supported by both CI runtime generations (iOS 18+).
-        device_type = next(d['identifier'] for d in data['devicetypes'] if d['name'] == 'iPhone 16')
+    # iPhone 16 is supported by both CI runtime generations (iOS 18+).
+    device_type = phone_type
     return subprocess.check_output(['xcrun', 'simctl', 'create', name, device_type, runtime['identifier']], text=True).strip()
 
 def main():

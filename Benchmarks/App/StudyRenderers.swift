@@ -1,6 +1,6 @@
 import UIKit
 import SwiftUI
-import PaperConfetti
+@_spi(Testing) import PaperConfetti
 
 /// Benchmarks only. The released renderer and public package API stay unchanged.
 @MainActor final class StudyRenderer: UIView {

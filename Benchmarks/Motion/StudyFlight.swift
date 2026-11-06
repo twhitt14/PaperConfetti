@@ -1,5 +1,5 @@
 import Foundation
-import PaperConfetti
+@_spi(Testing) import PaperConfetti
 
 /// Adapter around the production 0.2 flight; no second physics implementation.
 struct StudyFlight {

@@ -2,7 +2,8 @@
     import SwiftUI
     import UIKit
     import XCTest
-    @testable import PaperConfetti
+    import Combine
+    @_spi(Testing) @testable import PaperConfetti
 
     @MainActor
     final class ConfettiCompletionTests: XCTestCase {
@@ -30,8 +31,8 @@
             try await eventually { host.renderer != nil }
             var outcomes: [ConfettiOutcome] = []
             var returned = false
-            let accepted = controller.pop(configuration: .init(
-                count: 1, radius: 1, fall: 1, motion: .init(launchDuration: 0.05...0.05)
+            controller.pop(configuration: .init(
+                particleCount: 1, launchDistance: 1, fallDistance: 1, motion: .init(launchDuration: 0.05...0.05)
             )) { outcome in
                 XCTAssertTrue(returned)
                 XCTAssertTrue(Thread.isMainThread)
@@ -41,7 +42,6 @@
                 outcomes.append(outcome)
             }
             returned = true
-            XCTAssertTrue(accepted)
             XCTAssertTrue(outcomes.isEmpty)
             try await eventually { !outcomes.isEmpty }
             controller.cancel()
@@ -75,14 +75,14 @@
         func testReduceMotionSettlesBothPremountAndMountedRequestsWithoutParticles() async throws {
             let controller = ConfettiController()
             var queued: [ConfettiOutcome] = []
-            XCTAssertTrue(controller.pop { queued.append($0) })
+            controller.pop { queued.append($0) }
             let host = CompletionHost(controller, reduceMotion: true)
             defer { host.close() }
             try await eventually { !queued.isEmpty }
             XCTAssertEqual(queued, [.reducedMotion])
             XCTAssertFalse(controller.isPlaying)
             var mounted: [ConfettiOutcome] = []
-            XCTAssertFalse(controller.pop { mounted.append($0) })
+            controller.pop { mounted.append($0) }
             XCTAssertTrue(mounted.isEmpty, "Even a skipped request never calls user code inline")
             try await eventually { !mounted.isEmpty }
             XCTAssertEqual(mounted, [.reducedMotion])
@@ -92,13 +92,13 @@
         func testInactiveHostIsNotMistakenForAnAccessibilityCompletion() async throws {
             let controller = ConfettiController()
             var queued: [ConfettiOutcome] = []
-            XCTAssertTrue(controller.pop { queued.append($0) })
+            controller.pop { queued.append($0) }
             let host = CompletionHost(controller, reduceMotion: true, scenePhase: .inactive)
             defer { host.close() }
             try await eventually { !queued.isEmpty }
             XCTAssertEqual(queued, [.notPresented])
             var rejected: [ConfettiOutcome] = []
-            XCTAssertFalse(controller.pop { rejected.append($0) })
+            controller.pop { rejected.append($0) }
             try await eventually { !rejected.isEmpty }
             XCTAssertEqual(rejected, [.notPresented])
             XCTAssertFalse(controller.isPlaying)
@@ -146,8 +146,8 @@
             let controller = ConfettiController()
             var first: [ConfettiOutcome] = []
             var second: [ConfettiOutcome] = []
-            XCTAssertTrue(controller.pop { first.append($0) })
-            XCTAssertTrue(controller.pop { second.append($0) })
+            controller.pop { first.append($0) }
+            controller.pop { second.append($0) }
             controller.cancel()
             controller.cancel()
             try await eventually { !first.isEmpty && !second.isEmpty }
@@ -175,7 +175,7 @@
             let empty = ConfettiBurst(cannons: [])
             XCTAssertTrue(controller.pop(empty) { outcomes.append($0) })
             XCTAssertTrue(controller.pop(shortBurst(), colors: []) { outcomes.append($0) })
-            XCTAssertTrue(controller.pop(configuration: .init(count: 0)) { outcomes.append($0) })
+            controller.pop(configuration: .init(particleCount: 0)) { outcomes.append($0) }
             try await eventually { outcomes.count == 3 }
             XCTAssertEqual(outcomes, [.notPresented, .notPresented, .notPresented])
             XCTAssertFalse(controller.isPlaying)
@@ -212,7 +212,7 @@
             try await eventually { !active.isEmpty }
             XCTAssertEqual(active, [.cancelled])
             var rejected: [ConfettiOutcome] = []
-            XCTAssertFalse(controller.pop { rejected.append($0) })
+            controller.pop { rejected.append($0) }
             try await eventually { !rejected.isEmpty }
             XCTAssertEqual(rejected, [.notPresented])
         }
@@ -256,14 +256,88 @@
             XCTAssertEqual(outcomes, [.cancelled])
         }
 
-        func testExistingMethodReferencesKeepTheirOriginalTypes() {
+        func testPlaybackStatePublishesPendingPlayingAndIdleWithoutPollingFrames() async throws {
             let controller = ConfettiController()
-            let ordinary: (CGPoint?, ConfettiConfiguration) -> Bool = controller.pop
-            let advanced: (ConfettiBurst, [Color]) -> Bool = controller.pop
-            XCTAssertTrue(ordinary(nil, .init()))
-            XCTAssertTrue(advanced(shortBurst(), [.blue]))
-            controller.cancel()
+            var states: [ConfettiPlaybackState] = []
+            let observer = controller.$playbackState.sink { states.append($0) }
+            defer { observer.cancel() }
+            controller.pop(configuration: .init(particleCount: 1, launchDistance: 1, fallDistance: 1,
+                                                motion: .init(launchDuration: 0.05...0.05)))
+            try await eventually { states.contains(.pending) }
+            let host = CompletionHost(controller)
+            defer { host.close() }
+            try await eventually { states.contains(.playing) }
+            try await eventually { states.last == .idle }
+            XCTAssertEqual(states, [.idle, .pending, .playing, .idle])
         }
+
+        func testMissingSourceAndInvalidDropResolveOnceWithoutCancellingAnExistingPop() async throws {
+            let controller = ConfettiController()
+            let host = CompletionHost(controller)
+            defer { host.close() }
+            controller.pop(configuration: .init(fallDistance: 2_000))
+            try await eventually { controller.isPlaying }
+            var outcomes: [ConfettiOutcome] = []
+            controller.pop(fromSource: "missing") { outcomes.append($0) }
+            controller.drop(duration: -.infinity) { outcomes.append($0) }
+            try await eventually { outcomes.count == 2 }
+            XCTAssertEqual(outcomes, [.notPresented, .notPresented])
+            XCTAssertTrue(controller.isPlaying)
+        }
+
+        func testDropUsesBoundedCleanupAndReportsReplacement() async throws {
+            let controller = ConfettiController()
+            let host = CompletionHost(controller)
+            defer { host.close() }
+            var outcomes: [ConfettiOutcome] = []
+            controller.drop(configuration: .init(particleCount: 220), seed: 42) { outcomes.append($0) }
+            try await eventually { controller.isPlaying }
+            XCTAssertEqual(host.renderer?.particleLayerCount, 220)
+            controller.pop()
+            try await eventually { !outcomes.isEmpty }
+            XCTAssertEqual(outcomes, [.cancelled])
+            XCTAssertTrue(controller.isPlaying)
+        }
+
+        func testShowerNaturallyFinishesAndCleansUpWithoutAHostTimer() async throws {
+            let controller = ConfettiController()
+            let host = CompletionHost(controller)
+            defer { host.close() }
+            var outcomes: [ConfettiOutcome] = []
+            controller.drop(configuration: .init(particleCount: 8, fallDistance: 1, fallSpeedMultiplierRange: 4...4),
+                            duration: 0.1, seed: 42) { outcomes.append($0) }
+            try await eventually { controller.isPlaying }
+            XCTAssertTrue(outcomes.isEmpty)
+            try await eventually(timeout: 5) { !outcomes.isEmpty }
+            XCTAssertEqual(outcomes, [.finished])
+            XCTAssertFalse(controller.isPlaying)
+            XCTAssertTrue(host.renderer?.layer.sublayers?.isEmpty ?? true)
+        }
+
+        func testRelativeOriginUsesTheMountedOverlayBounds() async throws {
+            let controller = ConfettiController()
+            let host = CompletionHost(controller)
+            defer { host.close() }
+            controller.pop(from: .topTrailing, configuration: .init(particleCount: 1))
+            try await eventually { controller.isPlaying }
+            let clock = try XCTUnwrap(host.renderer?.layer.sublayers?.first)
+            let emitter = try XCTUnwrap(clock.sublayers?.first)
+            let flight = try XCTUnwrap(emitter.animation(forKey: "flight") as? CAAnimationGroup)
+            let positions = try XCTUnwrap(flight.animations?.first as? CAKeyframeAnimation)
+            XCTAssertEqual((positions.values?.first as? NSValue)?.cgPointValue, CGPoint(x: 390, y: 0))
+        }
+
+        func testPublicMethodReferenceReportsOutcomeInsteadOfAcceptanceBool() async throws {
+            let controller = ConfettiController()
+            let ordinary: (CGPoint?, ConfettiConfiguration, (@MainActor (ConfettiOutcome) -> Void)?) -> Void = controller.pop
+            var outcomes: [ConfettiOutcome] = []
+            ordinary(nil, .init()) { outcomes.append($0) }
+            XCTAssertTrue(controller.isPending)
+            controller.cancel()
+            try await eventually { !outcomes.isEmpty }
+            XCTAssertEqual(outcomes, [.cancelled])
+        }
+
     }
 
     // Exercise the controller's actual bridge inputs with a real UIKit renderer.

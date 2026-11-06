@@ -1,14 +1,34 @@
 import Foundation
 
-/// Immutable emission coordinates. Moving the source view never moves flying paper.
+/// An explicit angle. Zero points right and 90 degrees points up in overlay coordinates.
+public struct ConfettiAngle: Equatable, Sendable {
+    public var degrees: Double
+    public var radians: Double { degrees * .pi / 180 }
+    public static func degrees(_ value: Double) -> Self { Self(degrees: value) }
+    public static func radians(_ value: Double) -> Self { Self(degrees: value * 180 / .pi) }
+}
+
+/// Captured emission coordinates. Moving the source view never moves flying paper.
 public struct ConfettiEmitter: Equatable, Sendable {
-    public var x: Double
-    public var y: Double
+    @_spi(Testing) public var x: Double
+    @_spi(Testing) public var y: Double
     public var delay: Double
-    public var count: Int
-    public var angle: Double
-    public var spread: Double
-    public init(
+    @_spi(Testing) public var count: Int
+    @_spi(Testing) public var angle: Double
+    private var spreadDegrees: Double
+    public var origin: CGPoint {
+        get { CGPoint(x: x, y: y) }
+        set { x = newValue.x; y = newValue.y }
+    }
+    public var particleCount: Int { get { count } set { count = newValue } }
+    public var emissionAngle: ConfettiAngle { get { .degrees(angle) } set { angle = newValue.degrees } }
+    public var spread: ConfettiAngle { get { .degrees(spreadDegrees) } set { spreadDegrees = newValue.degrees } }
+    public init(origin: CGPoint, delay: TimeInterval = 0, particleCount: Int = 80,
+                emissionAngle: ConfettiAngle = .degrees(90), spread: ConfettiAngle = .degrees(70)) {
+        self.init(x: origin.x, y: origin.y, delay: delay, count: particleCount,
+                  angle: emissionAngle.degrees, spread: spread.degrees)
+    }
+    @_spi(Testing) public init(
         x: Double, y: Double, delay: Double = 0, count: Int = 36,
         angle: Double = 90, spread: Double = 40
     ) {
@@ -17,7 +37,7 @@ public struct ConfettiEmitter: Equatable, Sendable {
         self.delay = delay
         self.count = count
         self.angle = angle
-        self.spread = spread
+        self.spreadDegrees = spread
     }
 }
 
@@ -29,6 +49,8 @@ public enum ConfettiAppearance: String, CaseIterable, Sendable {
 
 /// Advanced paper motion. Ordinary callers can keep the lifelike defaults.
 public struct ConfettiMotion: Equatable, Sendable {
+    /// Multiplies ascent velocity while preserving reach and descent timing.
+    public var launchSpeedMultiplier: Double
     public var launchDuration: ClosedRange<Double>?
     public var spin: ClosedRange<Double>
     public var tumble: ClosedRange<Double>
@@ -37,12 +59,13 @@ public struct ConfettiMotion: Equatable, Sendable {
     /// Fraction of the descent before fading begins (0...0.95).
     public var fadeOutStart: Double
     public init(
-        launchDuration: ClosedRange<Double>? = nil,
+        launchDuration: ClosedRange<Double>? = nil, launchSpeedMultiplier: Double = 1,
         spin: ClosedRange<Double> = 2.8...7.8,
         tumble: ClosedRange<Double> = 3...10,
         sizeVariation: ClosedRange<Double> = 0.8...1.2,
         flutter: Double = 5, fadeOutStart: Double = 0.4
     ) {
+        self.launchSpeedMultiplier = launchSpeedMultiplier
         self.launchDuration = launchDuration
         self.spin = spin
         self.tumble = tumble
@@ -55,14 +78,17 @@ public struct ConfettiMotion: Equatable, Sendable {
             range.lowerBound.isFinite && range.upperBound.isFinite && bounds.contains(range.lowerBound)
                 && bounds.contains(range.upperBound)
         }
-        return (launchDuration.map { valid($0, within: 0.05...4) } ?? true) && valid(spin, within: 0...100)
+        return launchSpeedMultiplier.isFinite && (0.25...4).contains(launchSpeedMultiplier)
+            && (launchDuration.map { valid($0, within: 0.05...4) } ?? true) && valid(spin, within: 0...100)
             && valid(tumble, within: 0...100) && valid(sizeVariation, within: 0.1...3) && flutter.isFinite
             && (0...100).contains(flutter) && fadeOutStart.isFinite && (0...0.95).contains(fadeOutStart)
     }
 }
 
 /// No UI, timers or frame-step integration. Identical seeds produce identical flights.
-public struct ConfettiBurst: Equatable, Sendable {
+@_spi(Testing) public struct ConfettiBurst: Equatable, Sendable {
+    var dropRegion: CGRect?
+    var dropDuration: TimeInterval = 0
     public var cannons: [ConfettiEmitter]
     public var seed: UInt64
     public var radius: Double
@@ -100,7 +126,7 @@ public struct ConfettiBurst: Equatable, Sendable {
             fallSpeedRange.lowerBound >= 0.25, fallSpeedRange.upperBound <= 4
         else { return [] }
         var seen = Set<ConfettiShape>()
-        let shapes = shapes.filter { seen.insert($0).inserted }
+        let shapes = Array(shapes.filter { seen.insert($0).inserted }.prefix(32))
         guard !shapes.isEmpty else { return [] }
         let paletteCount = min(paletteCount, 16)
         // Separate stream: changes to cannon counts/positions do not reroll shape speeds.
@@ -118,12 +144,12 @@ public struct ConfettiBurst: Equatable, Sendable {
         // Bound accidental caller mistakes without a runaway animation allocation.
         for cannon in cannons.prefix(32)
         where cannon.x.isFinite && cannon.y.isFinite && cannon.delay.isFinite && cannon.angle.isFinite
-            && cannon.spread.isFinite
+            && cannon.spread.degrees.isFinite
         {
             for _ in 0..<min(max(0, cannon.count), max(0, 6_000 - result.count)) {
                 let angle =
                     (cannon.angle.truncatingRemainder(dividingBy: 360) + (random.unit() - 0.5)
-                        * min(abs(cannon.spread), 360))
+                        * min(abs(cannon.spread.degrees), 360))
                     * .pi / 180
                 // Retain the original ConfettiSwiftUI outer-weighted distance distribution.
                 let distance = pow(0.01 + random.unit() * 0.99, 2.0 / 7.0) * radius
@@ -136,7 +162,7 @@ public struct ConfettiBurst: Equatable, Sendable {
                         x: cannon.x, y: cannon.y,
                         delay: min(60, max(0, cannon.delay)), dx: cos(angle) * distance,
                         dy: -sin(angle) * distance,
-                        fall: fall, launchDuration: launchDuration,
+                        fall: fall, launchDuration: launchDuration / motion.launchSpeedMultiplier,
                         fallDuration: (fall + radius) / (200 * speed), fallSpeed: speed,
                         size: size * random.value(in: motion.sizeVariation),
                         phase: random.unit() * .pi * 2,
@@ -146,11 +172,26 @@ public struct ConfettiBurst: Equatable, Sendable {
                         shape: shape, color: Int(random.unit() * Double(paletteCount))).softened)
             }
         }
+        if let region = dropRegion {
+            // Stratify x positions, then jitter within each stratum for even coverage
+            // without a visible wall or synchronized rows. Each piece gets its own delay.
+            let width = Double(region.width), height = Double(region.height)
+            var drops = ConfettiRandom(seed: seed ^ 0x64726f7073)
+            return result.enumerated().map { index, p in
+                ConfettiParticle(x: Double(region.minX) + (Double(index) + drops.unit()) / Double(result.count) * width,
+                    y: Double(region.minY) - p.size * 2, delay: drops.unit() * dropDuration,
+                    dx: (drops.unit() - 0.5) * min(80, width * 0.2), dy: 0,
+                    fall: max(fall, height + p.size * 4), launchDuration: 0,
+                    fallDuration: max(0.4, (max(fall, height) / (200 * p.fallSpeed)) * (0.8 + drops.unit() * 0.4)),
+                    fallSpeed: p.fallSpeed, size: p.size, phase: p.phase, spin: p.spin, tumble: p.tumble,
+                    flutter: p.flutter, fadeOutStart: p.fadeOutStart, shape: p.shape, color: p.color)
+            }
+        }
         return result
     }
 }
 
-public struct ConfettiParticle: Equatable, Sendable {
+@_spi(Testing) public struct ConfettiParticle: Equatable, Sendable {
     public let x, y, delay, dx, dy, fall, launchDuration, fallDuration, fallSpeed, size, phase, spin, tumble,
         flutter, fadeOutStart: Double
     public let shape: ConfettiShape
@@ -160,8 +201,8 @@ public struct ConfettiParticle: Equatable, Sendable {
 
     public func position(at age: Double) -> (x: Double, y: Double) {
         let age = min(lifetime, max(0, age))
-        let up = min(1, age / launchDuration)
-        let launch = 2 * up - up * up
+        let up = launchDuration > 0 ? min(1, age / launchDuration) : min(1, age / fallDuration)
+        let launch = launchDuration > 0 ? 2 * up - up * up : up
         let down = max(0, (age - launchDuration) / fallDuration)
         let sway = sin(age * 7 + phase) * flutter * sin(age / lifetime * .pi)
         return (x + dx * launch + sway, y + dy * launch + fall * down * down)

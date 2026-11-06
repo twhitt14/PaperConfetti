@@ -15,7 +15,7 @@ import UIKit
             var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
             color.getRed(&r, green: &g, blue: &b, alpha: &a)
             return (0..<8).map { pose in
-                let key = "\(shapes[index % shapes.count].rawValue)|\(size)|\(scale)|\(r)|\(g)|\(b)|\(a)|\(pose)" as NSString
+                let key = "\(shapes[index % shapes.count].cacheKey)|\(size)|\(scale)|\(r)|\(g)|\(b)|\(a)|\(pose)" as NSString
                 if let existing = cache.object(forKey: key)?.cgImage { return existing }
                 let side = ceil(hypot(Double(image.width), Double(image.height))) + 2
                 let format = UIGraphicsImageRendererFormat(); format.scale = 1; format.opaque = false

@@ -21,6 +21,15 @@ struct ShowcaseView: View {
     @State private var pops = 0
     private let ink = Color(red: 0.055, green: 0.075, blue: 0.14)
     private let accent = Color(red: 0.38, green: 0.91, blue: 0.83)
+    private static let heart: ConfettiShape = {
+        let path = CGMutablePath()
+        path.move(to: CGPoint(x: 0.5, y: 1))
+        path.addCurve(to: CGPoint(x: 0.5, y: 0.2), control1: CGPoint(x: -0.6, y: 0.3), control2: CGPoint(x: 0.1, y: -0.3))
+        path.addCurve(to: CGPoint(x: 0.5, y: 1), control1: CGPoint(x: 0.9, y: -0.3), control2: CGPoint(x: 1.6, y: 0.3))
+        path.closeSubpath()
+        // This fixed, normalized recipe is validated by the custom-shape tests.
+        return try! ConfettiShape(path: path, name: "Heart")
+    }()
     private var testing: Bool { ProcessInfo.processInfo.arguments.contains("--ui-testing") }
 
     var body: some View {
@@ -80,6 +89,14 @@ struct ShowcaseView: View {
                     if ProcessInfo.processInfo.arguments.contains("--capture-pop") {
                         try? await Task.sleep(nanoseconds: 1_000_000_000)
                         emit(in: geometry.size, cannons: 5)
+                    } else if ProcessInfo.processInfo.arguments.contains("--capture-hearts") {
+                        try? await Task.sleep(nanoseconds: 1_000_000_000)
+                        confetti.pop(emitters: [.init(origin: CGPoint(x: geometry.size.width / 2, y: geometry.size.height - 130), particleCount: 180)],
+                            configuration: .init(colors: palette.colors, shapes: [Self.heart, .ring, .star], launchDistance: 350,
+                                                  fallDistance: 600, particleSize: 16), seed: 42)
+                    } else if ProcessInfo.processInfo.arguments.contains("--capture-shower") {
+                        try? await Task.sleep(nanoseconds: 1_000_000_000)
+                        confetti.drop(configuration: .init(colors: palette.colors, particleCount: 220), duration: 2.8, seed: 42)
                     }
                 }
             }
@@ -138,6 +155,21 @@ struct ShowcaseView: View {
                     Label("Details", systemImage: "arrow.right")
                 }.accessibilityIdentifier("details")
             }
+            HStack {
+                Button("Shower") {
+                    guard !reduceMotionDemo else { return }
+                    confetti.drop(configuration: .init(colors: palette.colors, particleCount: Int(count), appearance: appearance))
+                }.accessibilityIdentifier("drop")
+                Button("Custom hearts") {
+                    guard !reduceMotionDemo else { return }
+                    confetti.pop(fromSource: "custom-hearts", configuration: .init(colors: palette.colors,
+                        shapes: [Self.heart, .ring, .star], particleCount: 120, particleSize: 14, appearance: appearance))
+                }
+                .confettiSource(id: "custom-hearts", controller: confetti)
+                .accessibilityIdentifier("custom-hearts")
+            }.buttonStyle(.bordered).tint(accent)
+            Text("Playback: \(String(describing: confetti.playbackState))")
+                .font(.caption).accessibilityIdentifier("playback-state")
             Toggle("Try a toggle", isOn: $toggled).tint(accent)
                 .onChange(of: toggled) { _ in recordInteraction() }.accessibilityIdentifier("toggle-through")
             Text(proof).font(.caption).foregroundStyle(.secondary).accessibilityIdentifier("input-proof")
@@ -203,9 +235,7 @@ struct ShowcaseView: View {
                         if selected.contains(shape) { selected.remove(shape) } else { selected.insert(shape) }
                     } label: {
                         VStack(spacing: 10) {
-                            let image = ConfettiTextures.make(
-                                colors: [UIColor(accent)], size: 25, scale: 3, shapes: [shape])[0]
-                            Image(decorative: image, scale: 3).frame(height: 34)
+                            shape.fill(accent, style: FillStyle(eoFill: true)).frame(width: 52, height: 34)
                             Text(shape.label).font(.caption).foregroundStyle(.white)
                         }
                         .frame(maxWidth: .infinity).padding(.vertical, 14)
@@ -219,7 +249,7 @@ struct ShowcaseView: View {
                     }
                     .buttonStyle(.plain).accessibilityLabel(shape.label)
                     .accessibilityValue(selected.contains(shape) ? "Selected" : "Not selected")
-                    .accessibilityIdentifier("shape-\(shape.rawValue)")
+                    .accessibilityIdentifier("shape-\(ConfettiShape.allCases.firstIndex(of: shape) ?? -1)")
                 }
             }
             if selected.isEmpty {
@@ -252,25 +282,18 @@ struct ShowcaseView: View {
         let speeds = testing ? 0.5...0.6 : (variedSpeeds ? 0.75...1.35 : 1...1)
         let total = Int(count)
         let radius = min(320, Double(bounds.height) * 0.42)
-        // Match the library's radius-derived launch range, then scale only the rise.
-        // Dividing by 1.1 gives 10% more launch velocity at the same reach.
-        let launchRange = ((0.2 + radius / 1300) / launchSpeed)...((0.675 + radius / 1300) / launchSpeed)
-        let burst = ConfettiBurst(
-            cannons: (0..<cannons).map { index in
-                .init(
-                    x: Double(bounds.width) * (Double(index) + 0.5) / Double(cannons),
-                    y: Double(bounds.height) - 110, delay: Double(index) * 0.1,
-                    count: total / cannons + (index < total % cannons ? 1 : 0), spread: spread)
-            },
-            seed: ProcessInfo.processInfo.arguments.contains("--capture-pop")
-                ? 42 : .random(in: 1...UInt64.max),
-            radius: radius, fall: fall, size: size,
-            shapes: shapes, fallSpeedRange: speeds,
-            motion: .init(launchDuration: launchRange), appearance: appearance)
+        let configuration = ConfettiConfiguration(colors: palette.colors, shapes: shapes,
+            particleCount: total, launchDistance: radius, fallDistance: fall, particleSize: size,
+            spread: .degrees(spread), fallSpeedMultiplierRange: speeds,
+            motion: .init(launchSpeedMultiplier: launchSpeed), appearance: appearance)
         if reduceMotion || reduceMotionDemo {
             confetti.cancel()
         } else {
-            confetti.pop(burst, colors: palette.colors)
+            confetti.pop(emitters: (0..<cannons).map { index in
+                .init(origin: CGPoint(x: Double(bounds.width) * (Double(index) + 0.5) / Double(cannons),
+                                      y: bounds.height - 110), delay: Double(index) * 0.1,
+                      particleCount: total / cannons + (index < total % cannons ? 1 : 0), spread: .degrees(spread))
+            }, configuration: configuration, seed: ProcessInfo.processInfo.arguments.contains("--capture-pop") ? 42 : nil)
         }
         pops += 1
         proof =
@@ -300,24 +323,5 @@ private enum Palette: String, CaseIterable, Identifiable {
 }
 
 extension ConfettiShape {
-    fileprivate var label: String {
-        switch self {
-        case .star: return "Star"
-        case .outlinedStar: return "Star outline"
-        case .sparkle: return "Sparkle"
-        case .asterisk: return "Asterisk"
-        case .wave: return "Wave"
-        case .squiggle: return "Squiggle"
-        case .loop: return "Loop"
-        case .doubleLoop: return "Double loop"
-        case .ring: return "Ring"
-        case .longTriangle: return "Long triangle"
-        case .curvedTriangle: return "Curved cut"
-        case .diamond: return "Diamond"
-        case .parallelogram: return "Paper cut"
-        case .circle: return "Circle"
-        case .triangle: return "Triangle"
-        case .strip: return "Strip"
-        }
-    }
+    var label: String { name }
 }

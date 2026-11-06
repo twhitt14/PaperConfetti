@@ -1,5 +1,5 @@
 import Foundation
-import PaperConfetti
+@_spi(Testing) import PaperConfetti
 
 struct StudyScenario: Decodable, Identifiable {
     var id: String
@@ -71,7 +71,7 @@ struct StudyScenario: Decodable, Identifiable {
             burst.radius = 2; burst.fall = 800; burst.fallSpeedRange = 1...1
             burst.motion.flutter = 0; burst.motion.tumble = 0...0; burst.motion.spin = 0...0
             burst.motion.launchDuration = 0.3...0.3
-            for i in burst.cannons.indices { burst.cannons[i].spread = 0 }
+            for i in burst.cannons.indices { burst.cannons[i].spread = .degrees(0) }
             if ProcessInfo.processInfo.arguments.contains("--native-legacy-clock") {
                 // The negative control tests an expired window, not throughput.
                 // Keep its repeated live reference small; high-load coverage is

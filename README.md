@@ -4,283 +4,222 @@
 [![Platforms](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Ftwhitt14%2FPaperConfetti%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/twhitt14/PaperConfetti)
 
 A dependency-free iOS 16+ confetti package for SwiftUI and UIKit. Thirteen paper
-shapes, lifelike tumble, and a simple `pop()` method. Core Animation handles the
-flight while your interface keeps responding.
+shapes, custom silhouettes, lifelike tumble, and simple `pop()` and `drop()` methods.
+Core Animation handles flight while your interface keeps responding.
 
-**Version 0.3.0** adds completion callbacks, a button-origin recipe, and strict Swift 6 compilation checks. Native particles retain 3D tumble by default and an optional flat appearance. The package is publicly available on GitHub. See
-[validation results](VALIDATION.md) and the [release workflow](PUBLISHING.md).
+**Development API:** the examples below describe the next release. The latest
+published version is 0.3.0; see [migration notes](Documentation/MIGRATION.md) for
+the deliberate pre-1.0 API changes. No new device-performance claims are made here.
 
 <img src="Documentation/showcase.png" width="320" alt="PaperConfetti example with a colorful burst over tappable controls">
 
-## Install
+## Install and run
 
-Open `Package.swift` in Xcode to work on the library. For the interactive example,
-open `Examples/PaperConfettiExample.xcodeproj`, choose **PaperConfettiExample**, and
-run on an iPhone or iPad simulator. No signing account, setup tool or sibling
-checkout is needed for Simulator. To run on a physical device, select your own
-signing team in the example target.
+Add `https://github.com/twhitt14/PaperConfetti.git` in Xcode, selecting the
+**PaperConfetti** product. Use a tagged release for shipping apps. The package
+requires iOS/iPadOS 16+ and Swift tools 5.9+. It has no runtime dependencies.
+The macOS 13+ target supports core tests; there is no AppKit renderer.
 
-In Xcode → Add Package Dependencies, enter
-`https://github.com/twhitt14/PaperConfetti.git` and select the **PaperConfetti**
-product. SwiftPM consumers can use:
-
-```swift
-.package(url: "https://github.com/twhitt14/PaperConfetti.git", from: "0.3.0")
-```
-
-Then add `.product(name: "PaperConfetti", package: "paperconfetti")` to your
-target dependencies and `import PaperConfetti`. Use a tagged release for shipping
-apps; no registry or App Store upload is required for a Git-hosted Swift package.
-
-### Requirements
-
-- iOS/iPadOS 16+, Swift tools 5.9+.
-- SwiftUI and UIKit rendering. The macOS 13+ target exposes the pure physics model
-  for tests; **there is no macOS/AppKit confetti view**.
-- The checked-in example project opens in Xcode 16+. CI is configured for Xcode 16.4 and 26.6.
-
+Open `Examples/PaperConfettiExample.xcodeproj`, choose **PaperConfettiExample**,
+and run. Simulator needs no signing setup; for an iPhone, choose your own team.
+The example uses the package in this repository and requires Xcode 16+.
 
 ## Three lines to celebrate
 
 ```swift
 @StateObject private var confetti = ConfettiController()
 
-// Attach to a stable, full-size screen/container:
 YourContent().confettiOverlay(confetti)
 
-// In a button, game event or onAppear:
 confetti.pop()
 ```
 
-`pop()` emits from the bottom center of that container. There is no counter,
-identity mutation, timer or seed management in the calling view. `cancel()` stops
-all work. Each new pop replaces the previous burst, rather than accumulating an
-unbounded particle queue. See `Examples/QuickStart.swift` for a complete view.
+Mount the overlay on a stable, full-size container. `pop()` launches from its
+bottom center. `cancel()` stops the effect. A new request replaces the previous
+one on that controller; use two controllers for intentionally overlapping effects.
+There is no counter, identity mutation or timer in the calling view.
 
-### Launch from the button
-
-`pop(at: CGPoint(...))` already supports a custom origin in the overlay's local
-coordinates. For a button inside a larger screen, resolve its bounds in that
-screen's coordinate space and pass the center to `pop(at:)`. Keep the overlay
-on the full-size container so the paper can fly beyond the button.
-
-The [button-origin guide](Sources/PaperConfetti/PaperConfetti.docc/ButtonOrigin.md)
-includes a complete iOS 16+ anchor example; the same code is available in
-[Examples/ButtonOrigin.swift](Examples/ButtonOrigin.swift). It updates the
-measurement as layout changes and captures the position when tapped. Default
-`pop()` still launches from bottom-center; no new origin API is required.
-
-## Chain an action after a pop
-
-Available in 0.3.0. Existing calls stay the same. Add a completion closure only
-when another action needs to follow
-this particular celebration:
+## Origins and showers
 
 ```swift
-import SwiftUI
-import PaperConfetti
+Button("Celebrate") { confetti.pop(fromSource: "celebrate") }
+    .confettiSource(id: "celebrate", controller: confetti)
 
-struct CelebrationSheet: View {
-    @StateObject private var confetti = ConfettiController()
-    @Environment(\.dismiss) private var dismiss
+confetti.pop(from: .bottomLeading)
+confetti.pop(at: CGPoint(x: 180, y: 450))
+confetti.drop(configuration: .init(particleCount: 220), duration: 2.8)
+```
 
-    var body: some View {
-        Button("Done") {
-            confetti.pop { outcome in
-                switch outcome {
-                case .finished, .reducedMotion:
-                    dismiss()
-                case .cancelled, .notPresented:
-                    break
-                }
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .confettiOverlay(confetti)
+A registered source resolves its current center in the ancestor overlay; use
+unique IDs within each controller. Missing sources report `.notPresented`.
+`UnitPoint` origins resolve when playback starts; explicit points use overlay-local
+coordinates. Origins are frozen for that event, so keep the overlay outside
+keyboard-driven or scrolling layouts. The [complete button example](Examples/ButtonOrigin.swift)
+and [guide](Sources/PaperConfetti/PaperConfetti.docc/ButtonOrigin.md) work on iOS 16.
+
+`drop()` distributes paper across the whole top edge, with individual start times,
+fall speeds and drift. `duration` is the emission window, not total flight time.
+Paper travels at least the container height and fades before cleanup.
+
+## Customize one cannon or many
+
+```swift
+var style = ConfettiConfiguration.festive
+style.colors = [.cyan, .orange, .gray]
+style.shapes = [.star, .outlinedStar, .ring, .wave, .longTriangle]
+style.particleCount = 120
+style.particleSize = 12
+style.launchDistance = 180
+style.fallDistance = 450
+style.emissionAngle = .degrees(90)
+style.spread = .degrees(90)
+style.motion.launchSpeedMultiplier = 1.1
+style.fallSpeedMultiplierRange = 0.7...1.4
+style.appearance = .threeDimensional // Or .flat
+confetti.pop(configuration: style)
+
+let emitters = (0..<5).map { index in
+    ConfettiEmitter(origin: CGPoint(x: 40 + Double(index) * 70, y: 500),
+                    delay: Double(index) * 0.1, particleCount: 36,
+                    emissionAngle: .degrees(90), spread: .degrees(40))
+}
+confetti.pop(emitters: emitters, configuration: style, seed: 42)
+```
+
+Both use the same configuration. Multiple emitters provide their own origins,
+counts, directions, spreads and delays; those emitter values replace the single-
+cannon count/direction settings. A seed makes multi-cannon and shower previews
+reproducible, and repeating the same seed still plays a new event.
+
+Angles accept `.degrees(...)` or `.radians(...)`: zero points right, 90° up.
+Spread is the full fan width. Distances and sizes use points. Launch distance is
+nominal: a tapering scattered tail softens the blast's outer edge.
+`launchSpeedMultiplier` changes ascent speed without changing reach, descent or
+cannon spacing. Other motion controls cover launch duration, spin/tumble in
+radians per second, size variation, horizontal flutter and descent fade timing.
+
+Both appearances use native particles. Flat pieces spin in screen space;
+3D pieces also tilt. Each shape gets a random base fall speed per event, while
+individual timing, size, spin and starting pose prevent synchronized motion.
+Rise and fall meet at the peak without a pause. `.subtle` and `.festive` are
+editable starting points rather than separate effect engines.
+
+## Custom shapes
+
+```swift
+let path = CGMutablePath()
+path.move(to: CGPoint(x: 0.5, y: 0))
+path.addLine(to: CGPoint(x: 1, y: 1))
+path.addLine(to: CGPoint(x: 0, y: 1))
+path.closeSubpath()
+let pennant = try ConfettiShape(path: path, name: "Pennant")
+confetti.pop(configuration: .init(shapes: [pennant, .ring, .wave]))
+```
+
+Paths are copied, normalized and cached as small raster textures before playback;
+no path is redrawn on animation frames. Aspect ratio is preserved, and even-odd
+fill supports holes. Stroke open lines into a filled outline before passing them.
+Geometry determines identity, so labels cannot cause texture collisions. Up to
+512 path elements are accepted; empty, non-finite, degenerate, or thinner-than-1:64
+paths throw `ConfettiShape.PathError`. Keep silhouettes simple at confetti sizes.
+
+Built-ins include four stars, four curved streamers, a ring and four paper cuts.
+`ConfettiShape.classic` supplies circle, triangle and strip. Custom and built-in
+values also conform to SwiftUI `Shape` for previews. Duplicate geometry is
+removed from a palette; the first 32 distinct shapes are used.
+
+## State and completion
+
+```swift
+Text(confetti.playbackState == .playing ? "Celebrating" : "Ready")
+
+confetti.pop { outcome in
+    switch outcome {
+    case .finished, .reducedMotion:
+        break // Continue if the surrounding operation is still current.
+    case .cancelled, .notPresented:
+        break // Do not mistake interruption for successful completion.
     }
 }
 ```
 
-The same closure works with `pop(at:configuration:completion:)` and
-`pop(_:colors:completion:)`. Each resolved request calls back once on the main
-actor, after cleanup and never inline during `pop()` or a SwiftUI update.
+Event methods return `Void`. Optional callbacks resolve once, asynchronously on
+the main actor, after cleanup. `finished` includes delayed cannons and a 0.25s
+cleanup margin; it is not a last-visible-pixel measurement. `reducedMotion` means
+an active host skipped animation for accessibility. Invalid or unavailable
+presentations report `notPresented`; replacement or lifecycle interruption reports
+`cancelled`. Outcomes remain tied to their original request.
 
-| Outcome | Meaning |
-| --- | --- |
-| `finished` | The scheduled flight, including delayed cannons, reached its cleanup. |
-| `reducedMotion` | An active host omitted the animation for accessibility. Continue without waiting for invisible confetti. |
-| `cancelled` | The request was replaced, explicitly cancelled, or interrupted by a host/lifecycle change. |
-| `notPresented` | The host was unavailable, the burst had no valid particles, or the renderer never became ready. |
+Published `playbackState` is `.idle`, `.pending` or `.playing`. Updates occur on
+the next main-actor turn and can coalesce; they never track individual frames.
+`isPlaying` and `isPending` provide immediate status, not render-server readback.
+Before the first mount, one request may wait for attachment/layout. Cancel it if
+that presentation is abandoned. Use weak captures when an owner retains a
+completion; releasing an unresolved request otherwise reports `cancelled`.
 
-The Bool still reports request acceptance, not completion. Even a rejected call
-reports its outcome through the closure. Before the first mount, an accepted
-request can wait for attachment/layout; cancel it if that presentation is
-abandoned. Releasing an unresolved request reports `cancelled`, provided caller
-captures do not retain its owner. Use weak captures where an owning reference
-type would otherwise retain itself through a pending callback.
-
-`finished` uses the renderer's existing scheduled cleanup, which includes a
-quarter-second safety margin. It is not an exact last-visible-pixel measurement
-from Core Animation. Outcomes describe that request; callers still own whether
-their screen or operation is current when a follow-up runs. Cancellation after an
-outcome has been resolved does not rewrite it.
-
-The API provides one callback style, with no second async API,
-request handles, observer streams, or new appearance/accessibility settings.
-This completion surface is on the controller; the lower-level UIKit and
-value-driven overlay entry points are unchanged.
-
-## Customize an ordinary pop
+## UIKit, lifecycle and interaction
 
 ```swift
-confetti.pop(at: CGPoint(x: 180, y: 450), configuration: .init(
-    colors: [.cyan, .orange, .gray],
-    shapes: [.star, .outlinedStar, .ring, .wave, .longTriangle],
-    count: 120, radius: 180, fall: 450, size: 12,
-    angle: 90, spread: 90, fallSpeedRange: 0.7...1.4,
-    motion: .init(spin: 1...5, tumble: 2...6, flutter: 8)
-))
+let confetti = ConfettiView(frame: container.bounds)
+confetti.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+container.addSubview(confetti)
+confetti.pop(configuration: .init(colors: [.cyan, .orange]))
 ```
 
-Angles are degrees: 90 points up; spread is the full fan width. Positions and
-sizes use points in the overlay's local coordinate system. Capturing cannon
-positions freezes them for that pop; moving the entire overlay still moves its
-coordinate system, so mount it outside a keyboard/layout animation.
+`ConfettiView` owns the same renderer and automatically handles Reduce Motion,
+scene deactivation and detachment. It provides `pop`, multiple emitters, `drop`,
+`cancel`, completion callbacks and `isPlaying`. See the
+[UIKit guide](Sources/PaperConfetti/PaperConfetti.docc/UIKitIntegration.md).
 
-The default 13 shapes contain four stars, four curved streamers, a hollow ring,
-and four angular/curved paper cuts. `ConfettiShape.classic` retains the old circle,
-triangle and strip. Long shapes retain their aspect ratios. Duplicate entries
-are deduplicated; use an explicit subset to select a style.
+Both hosts pass touches through and hide decorative paper from accessibility.
+Cancelled effects do not replay on foregrounding. Hosts still provide accessible
+success text or haptics. One controller belongs to one overlay; don’t attach the
+same controller to multiple containers.
 
-Choose the appearance independently of the shapes and colors:
+## Rendering and safety
 
-```swift
-confetti.pop(configuration: .init(appearance: .flat))
-confetti.pop(configuration: .init(appearance: .threeDimensional)) // Default
-```
+`CAEmitterLayer` owns playback: no particle SwiftUI views, per-frame app callbacks
+or per-particle timers. Adaptive trajectory samples and shared raster poses keep
+the varied shapes and tilt inexpensive. A paused, pre-rolled clock prepares the
+whole event before launch, avoiding brief birth windows that could lose cannons.
+Cancellation invalidates pending starts and removes the layer tree.
 
-Both appearances use the same native particle renderer. Flat pieces rotate in
-screen space; 3D pieces also tilt as they fall. `ConfettiBurst` accepts the same
-`appearance` parameter for multiple cannons. Existing `pop()` calls need no changes.
+Safety limits: 32 cannons, 6,000 particles, 16 colors, 32 distinct shapes, cannon
+delays up to 60s, shower emission 0–10s, nominal size 1–64pt, distances up to
+5,000pt and speed multipliers 0.25–4. Invalid flight input emits nothing. These
+bounds are not performance recommendations. The example starts at 180 pieces and
+allows 5,760 for deliberate stress testing. Physics, texture caches and renderer
+diagnostics are implementation details, available only to package benchmarks/tests.
 
-Each shape gets a random base fall speed per pop, then each piece gets its own
-rise time and ±20% descent-time variation. Seeded spin, size and starting pose
-keep identical shapes from moving in lockstep. The rise and fall meet smoothly
-at the peak without a pause. Radius is a nominal reach: a tapering distribution
-of outliers softly feathers the blast's outer edge instead of stopping at a wall.
-
-## Full burst control
-
-```swift
-let burst = ConfettiBurst(cannons: (0..<5).map { index in
-    ConfettiEmitter(x: 40 + Double(index) * 70, y: 500,
-                    delay: Double(index) * 0.1, count: 36,
-                    angle: 90, spread: 40)
-}, radius: 130, fall: 320, size: 10,
-   shapes: ConfettiShape.festive, fallSpeedRange: 0.75...1.35,
-   motion: .init(launchDuration: 0.3...0.7, spin: 2...8,
-                 tumble: 3...10, sizeVariation: 0.8...1.2,
-                 flutter: 5, fadeOutStart: 0.4))
-confetti.pop(burst, colors: [.cyan, .orange, .gray])
-```
-
-`ConfettiBurst` accepts an optional seed for reproducible previews/tests. Calling
-`pop` twice with that identical burst plays twice. Seeds determine physics, not
-whether an event fires. `ConfettiMotion` controls launch duration, spin/tumble in
-radians per second, size variation, horizontal flutter and when descent fading
-begins. `fallSpeedRange: 1...1` disables shape-speed variation; individual timing still varies.
-
-The lower-level declarative `ConfettiOverlay(burst:colors:)` remains available for
-state-driven hosts. It consumes a value only once; repeating an identical value
-or updating the palette does not retrigger it. Prefer the controller for events.
-UIKit hosts call `ConfettiLayerView.play(burst:colors:)` and `cancel()` directly;
-they must supply scene/Reduce Motion policy. The compatibility `show` method
-keeps the declarative no-replay behavior. Do not mix both trigger styles on one
-renderer.
-
-## Lifecycle and interaction
-
-Own one controller per overlay with `@StateObject`. The SwiftUI modifier respects
-Reduce Motion, cancels on scene deactivation/removal, and never restarts a canceled
-pop on reactivation. Calls to an inactive or previously detached host return
-false. Before the first mount only, the latest single request may wait for layout
-so an initial `onAppear` event is not lost. `isPlaying` is an instantaneous status,
-not a per-frame published value. The host supplies accessible success text/haptics.
-
-Both SwiftUI and UIKit layers pass through input and hide the decoration from
-accessibility. The UIKit view also returns nil from hit testing even if its host
-accidentally enables interaction. The standalone example UI tests tap a button and toggle, scroll, navigate and
-cancel under live particles. Package tests verify UIKit hit routing during flight,
-initial mounting, scene changes, cancellation and repeated seeded events.
-
-## Rendering and bounds
-
-`CAEmitterLayer` owns playback. There are no particle SwiftUI views, per-frame
-app callbacks, or per-particle timers. Adaptive trajectory samples and shared,
-cached raster poses preserve the fast launch, varied shapes and 3D paper tilt.
-The whole burst is prepared under a paused clock, then started together with
-load-dependent headroom. The local clock starts one emission period into its
-schedule, creating the first particle without relying on a brief birth window.
-The next birth is later than the longest allowed burst and its cleanup. Each
-cannon’s delay applies to its visible flight. Cancellation invalidates pending
-starts and removes the entire layer tree; natural completion releases it too.
-
-Limits: 32 cannons, 6,000 requested particles, 16 colors, delays up to 60 seconds;
-nominal size 1–64 points, radius/fall positive and at most 5,000 points, base
-fall-speed multipliers 0.25–4. Invalid input emits nothing. These are safety bounds,
-not performance recommendations. The example starts with 180 pieces and offers
-up to 5,760 for deliberate stress tests.
-
-Native births are rate-based. `particleLayerCount` reports the requested active
-population, not a live readback from Core Animation. `scheduledStartDelay` records
-preparation plus the scheduled clock-start delay in seconds; it is not a displayed
-frame measurement. Physical pixel tests verified all 5,760 slots and all five
-cannons on the tested iPhone; that is not a universal count/FPS guarantee.
-
-The pure physics model/tests compile on macOS 13+; the renderer is UIKit, not an
-AppKit implementation. No network, analytics or stored identifiers. Original
-ConfettiSwiftUI attribution ships in `THIRD_PARTY_NOTICES.txt` and the resource bundle.
+No network, analytics or stored identifiers. Attribution ships in the resource
+bundle. Physical pixel tests verified five cannons and 5,760 slots on one tested
+iPhone; that is not a universal count/FPS guarantee.
 
 ## Example and validation
 
-The example includes three palettes, per-shape selection, particle/size/spread
-controls, flat/3D selection, shape-speed variation, a Reduce Motion preview, and touch-through
-controls beneath the animation. Its dependency is the package in this repository.
-
-Open `Examples/PaperConfettiExample.xcodeproj`, select the **PaperConfettiExample**
-scheme and your iPhone, then press **⌘R**. In **Make it yours**, switch **Launch
-speed** between **Normal** and **10% faster**, then tap **Pop** or **5 cannons**.
-The example starts with the faster option for comparison; the library default is
-unchanged. This divides the normal randomized `motion.launchDuration` range by
-1.1, increasing launch velocity by 10% at the same reach, without speeding up the
-fall or changing cannon spacing. Compare both flat and 3D appearances.
+The example includes shape/palette controls, custom hearts, a top shower, flat/3D,
+launch speed, Reduce Motion and live touch-through controls. Run:
 
 ```sh
-swift test                         # Pure physics tests on macOS
-python3 tools/validate.py           # Package + example iOS tests, Release build, DocC
-python3 tools/validate.py --core-only
-python3 tools/capture-example.py    # Repeatable screenshots after validation
+swift test
+python3 tools/validate.py
+python3 tools/capture-example.py
 ```
 
-The runner creates/reuses only the dedicated **PaperConfetti Example** simulator.
-Artifacts stay in ignored `.artifacts/`; no personal simulator is erased or used.
-The same runner is used by GitHub Actions on both configured Xcode generations.
-CI uses the standard read-only GitHub Actions token for checkout; it needs no
-custom secrets, signing certificates or app services. Follow the
-[GitHub Actions runs](https://github.com/twhitt14/PaperConfetti/actions/workflows/ci.yml)
-for hosted results.
+Validation checks core physics, strict Swift 6 compilation, the iOS package,
+example interaction, Release builds and DocC. The runner uses only the dedicated
+**PaperConfetti Example** simulator and ignored `.artifacts/` output. Simulator
+checks establish behavior and compatibility, not physical frame-rate performance.
 
-Open the package's DocC catalog in Xcode for API documentation and the UIKit guide.
-See [CONTRIBUTING.md](CONTRIBUTING.md), [VALIDATION.md](VALIDATION.md), and the
-[publication checklist](PUBLISHING.md).
+See [validation](VALIDATION.md), [contributing](CONTRIBUTING.md), the
+[release workflow](PUBLISHING.md), and [GitHub CI](https://github.com/twhitt14/PaperConfetti/actions/workflows/ci.yml).
 
 ## License and acknowledgments
 
 MIT; see [LICENSE](LICENSE). The original ConfettiSwiftUI MIT attribution is
-preserved in [THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt) and shipped as a
-package resource. Its outer-weighted launch distribution and timing curves
-informed this independent renderer. All 13 festive silhouettes are original
-vector paths. No runtime dependency on ConfettiSwiftUI is required.
+preserved in [THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt) and the package
+resource. Its distribution and timing curves informed this independent renderer.
+All 13 festive silhouettes are original paths. ConfettiSwiftUI is benchmark-only.
 
 ## On-device performance: native 0.2.0
 

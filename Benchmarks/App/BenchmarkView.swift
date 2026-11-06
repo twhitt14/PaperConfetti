@@ -1,5 +1,5 @@
 import SwiftUI
-import PaperConfetti
+@_spi(Testing) import PaperConfetti
 import ConfettiSwiftUI
 
 struct BenchmarkView: View {
@@ -73,8 +73,8 @@ private struct LegacyCannon: View {
         ConfettiCannon(counter: $trigger, num: cannon.count,
             confettis: [.shape(.circle), .shape(.triangle), .shape(.slimRectangle)],
             colors: palette, confettiSize: 7, rainHeight: 320,
-            openingAngle: .degrees(cannon.angle - cannon.spread / 2),
-            closingAngle: .degrees(cannon.angle + cannon.spread / 2), radius: 130)
+            openingAngle: .degrees(cannon.angle - cannon.spread.degrees / 2),
+            closingAngle: .degrees(cannon.angle + cannon.spread.degrees / 2), radius: 130)
         .frame(width: 0, height: 0)
         .task {
             // Allow SwiftUI to mount the legacy counter observer before its first event.

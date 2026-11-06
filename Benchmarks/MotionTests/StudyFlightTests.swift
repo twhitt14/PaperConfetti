@@ -1,5 +1,5 @@
 import XCTest
-import PaperConfetti
+@_spi(Testing) import PaperConfetti
 @testable import StudyMotion
 
 final class StudyFlightTests: XCTestCase {

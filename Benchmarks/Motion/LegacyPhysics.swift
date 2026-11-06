@@ -1,5 +1,5 @@
 // Frozen PaperConfetti 0.1.0 physics; MIT. Benchmark only.
-import PaperConfetti
+@_spi(Testing) import PaperConfetti
 import Foundation
 
 /// Immutable emission coordinates. Moving the source view never moves flying paper.
@@ -215,7 +215,7 @@ struct LegacyConfettiRandom {
 extension LegacyConfettiBurst {
     init(_ b: ConfettiBurst) {
         self.init(cannons: b.cannons.map { LegacyConfettiEmitter(x: $0.x, y: $0.y, delay: $0.delay,
-            count: $0.count, angle: $0.angle, spread: $0.spread) }, seed: b.seed, radius: b.radius,
+            count: $0.count, angle: $0.angle, spread: $0.spread.degrees) }, seed: b.seed, radius: b.radius,
             fall: b.fall, size: b.size, shapes: b.shapes, fallSpeedRange: b.fallSpeedRange,
             motion: LegacyConfettiMotion(launchDuration: b.motion.launchDuration, spin: b.motion.spin,
                 tumble: b.motion.tumble, sizeVariation: b.motion.sizeVariation,

@@ -1,5 +1,5 @@
 import SwiftUI
-import PaperConfetti
+@_spi(Testing) import PaperConfetti
 import os.signpost
 
 @MainActor final class StudyModel: ObservableObject {

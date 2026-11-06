@@ -1,5 +1,5 @@
 import UIKit
-import PaperConfetti
+@_spi(Testing) import PaperConfetti
 // Frozen PaperConfetti 0.1.0 renderer; MIT. Benchmark only.
     /// Public for UIKit hosts and the comparison harness. One bounded animation group per particle.
     @MainActor public final class LegacyPaperLayerView: UIView {

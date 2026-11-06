@@ -4,7 +4,7 @@
 
     /// Decorative SwiftUI overlay. Give each new celebration a new burst seed or `.id`.
     /// Core Animation owns the flight: no per-frame SwiftUI updates or particle timers.
-    public struct ConfettiOverlay: View {
+    @_spi(Testing) public struct ConfettiOverlay: View {
         public let burst: ConfettiBurst
         public let colors: [Color]
         @Environment(\.accessibilityReduceMotion) private var reduceMotion

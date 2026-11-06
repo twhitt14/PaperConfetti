@@ -1,6 +1,6 @@
 import XCTest
 
-@testable import PaperConfetti
+@_spi(Testing) @testable import PaperConfetti
 
 final class ConfettiPhysicsTests: XCTestCase {
     func testDeterministicBoundedParticlesAndPalette() {
